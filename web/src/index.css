@@ -1,111 +1,336 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Lyon : la pierre des quais, le Rhône, l'ocre du Vieux Lyon, la brique. */
+  --pierre: #edf0ee;
+  --pierre-fonce: #dde3e0;
+  --encre: #1d2b33;
+  --encre-douce: #4d5d66;
+  --rhone: #1e6e8a;
+  --ocre: #c98f2e;
+  --brique: #a8432f;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --serif: 'Spectral', Georgia, serif;
+  --sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  color-scheme: light;
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--encre);
+  background: var(--pierre);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--pierre);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
+a {
+  color: var(--rhone);
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--rhone);
+  outline-offset: 2px;
+}
+
+/* ---------- Mise en page : panneau à gauche, carte à droite ---------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 440px) 1fr;
+  min-height: 100vh;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  padding: 2.5rem 2.25rem 2rem;
+  max-height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--pierre-fonce);
+}
+
+.map-wrap {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+  background: var(--pierre-fonce);
+}
+
+/* Fond de carte désaturé : les couleurs de disponibilité restent seules à parler. */
+.map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.85) brightness(1.08);
+}
+
+/* ---------- En-tête ---------- */
+
+.brand h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: 0.01em;
+}
+
+.tagline {
+  margin: 0.15rem 0 0;
+  color: var(--encre-douce);
+  font-size: 0.95rem;
+}
+
+/* ---------- La phrase en direct : l'élément fort de la page ---------- */
+
+.sentence {
+  margin: 0;
+  font-family: var(--serif);
   font-weight: 500;
-  color: var(--text-h);
+  font-size: clamp(1.9rem, 1.2rem + 1.6vw, 2.6rem);
+  line-height: 1.18;
+  text-wrap: balance;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.figure {
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--rhone);
+  white-space: nowrap;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+
+.detail {
+  margin: 1rem 0 0;
+  max-width: 34em;
 }
-p {
+
+.freshness {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--encre-douce);
+}
+
+.freshness-stale {
+  color: var(--brique);
+}
+
+/* ---------- États ---------- */
+
+.status {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.status-error {
+  padding: 1rem 1.1rem;
+  border-left: 4px solid var(--brique);
+  background: #f6e9e5;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.status-error p {
+  margin: 0 0 0.75rem;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.status-error button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--encre);
+  border-radius: 4px;
+  background: transparent;
+}
+
+/* ---------- Recherche ---------- */
+
+.search label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+}
+
+.search input {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  font: inherit;
+  color: var(--encre);
+  background: #fff;
+  border: 1px solid #b9c3c0;
+  border-radius: 4px;
+}
+
+.search input::placeholder {
+  color: #7d8a90;
+}
+
+.search-empty {
+  margin: 0.6rem 0 0;
+  color: var(--encre-douce);
+}
+
+.results {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.results button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.35rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--pierre-fonce);
+}
+
+.results button:hover {
+  background: var(--pierre-fonce);
+}
+
+.result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--encre-douce);
+}
+
+/* ---------- Légende ---------- */
+
+.dot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot-hollow {
+  border: 2px solid;
+  background: transparent;
+}
+
+.legend ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend p {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: var(--encre-douce);
+}
+
+/* ---------- Prochaine étape ---------- */
+
+.next h2 {
+  margin: 0 0 0.4rem;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.3rem;
+}
+
+.next p {
+  margin: 0;
+  color: var(--encre-douce);
+}
+
+/* ---------- Crédits ---------- */
+
+.credits {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--pierre-fonce);
+  font-size: 0.82rem;
+  color: var(--encre-douce);
+}
+
+.credits p {
+  margin: 0 0 0.4rem;
+}
+
+/* ---------- Popups Leaflet ---------- */
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--encre);
+}
+
+.leaflet-popup-content p {
+  margin: 0;
+}
+
+.popup-name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 0.2rem !important;
+}
+
+.popup-time {
+  margin-top: 0.25rem !important;
+  font-size: 0.82rem;
+  color: var(--encre-douce);
+}
+
+/* ---------- Mobile : la carte d'abord, le texte ensuite ---------- */
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .map-wrap {
+    position: relative;
+    order: -1;
+    height: 52vh;
+  }
+
+  .panel {
+    max-height: none;
+    overflow: visible;
+    padding: 1.5rem 1rem 1.5rem;
+    border-right: 0;
+    gap: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
 }
