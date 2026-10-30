@@ -8,6 +8,9 @@ license = { text = "MIT" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
+# Les tests d'intégration sont exclus par défaut : pytest -m integration
+addopts = "-m 'not integration'"
+markers = ["integration: vrais appels réseau (flux Vélo'v, Hugging Face de staging)"]
 
 [tool.ruff]
 line-length = 110
