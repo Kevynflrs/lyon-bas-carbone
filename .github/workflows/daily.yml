@@ -1,0 +1,53 @@
+name: Tâches quotidiennes
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # 02:17 UTC chaque nuit
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Référentiel des stations Vélo'v
+        run: python -m pipeline.ingest.velov information
+
+      - name: Compaction de la veille (≈96 fichiers -> 1)
+        run: python -m pipeline.ingest.compact
+
+  keepalive:
+    # GitHub désactive les crons d'un dépôt public après 60 jours sans activité.
+    # Les données partant sur Hugging Face, le dépôt peut sembler inactif :
+    # on pousse un commit vide si le dernier commit date de plus de 45 jours.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Commit vide si nécessaire
+        run: |
+          last_commit=$(git log -1 --format=%ct)
+          age_days=$(( ($(date +%s) - last_commit) / 86400 ))
+          echo "Dernier commit il y a ${age_days} jours"
+          if [ "$age_days" -ge 45 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive des workflows planifiés"
+            git push
+          fi
