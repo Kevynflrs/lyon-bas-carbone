@@ -3,6 +3,7 @@
 [![CI](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/ci.yml)
 [![Collecte Vélo'v](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/collect_velov.yml/badge.svg)](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/collect_velov.yml)
 [![Déploiement](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/deploy.yml/badge.svg)](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/deploy.yml)
+[![Licence : MIT](https://img.shields.io/badge/licence-MIT-1e6e8a.svg)](LICENSE)
 
 Pour un trajet dans la métropole de Lyon, comparer **transports en commun, Vélo'v, marche et voiture**
 selon le temps, la fiabilité et le CO2 émis. Avec une méthodologie transparente, y compris quand
@@ -57,7 +58,7 @@ flowchart LR
 | -------------------- | ---------------------------------- | ------------------------------------------------------------------- |
 | Orchestration        | GitHub Actions                     | Crons gratuits pour un dépôt public, déjà intégrés à la CI   |
 | Stockage brut        | Dataset Hugging Face (Parquet,)    | Stockage public gratuit, versionné, lisible directement par DuckDB |
-| Front                | React + TypeScript (Vite), Leaflet | Site statique sur GitHub Pages : toujours en ligne, aucun serveur   |
+| Front | React + TypeScript (Vite), Tailwind CSS, Leaflet | Site statique sur GitHub Pages : toujours en ligne, aucun serveur |
 | Qualité du code     | ruff, pytest, oxlint               | Lint et tests à chaque push                                        |
 | Transformations (V2) | dbt + DuckDB                       | Moteur analytique local, aucun entrepôt à payer                   |
 | ML (V3)              | LightGBM, scikit-learn             | Données tabulaires et temporelles                                  |
@@ -135,9 +136,40 @@ pipeline/
   storage.py -écriture Hugging Face ou locale
 tests/ -tests unitaires (sans réseau)
 tests/integration/ -tests sur le vrai flux et le dataset de staging
-web/ -site React + TypeScript (Vite, Leaflet)
+web/ -site React + TypeScript (Vite, Tailwind CSS, Leaflet)
 .github/workflows/ -CI, intégration, déploiement, collecte, tâches quotidiennes
 ```
+
+## Conventions de développement
+
+### Branches
+
+Chaque modification passe par une branche dédiée, puis par une Pull Request : d'abord vers `dev`
+(CI + tests d'intégration), puis de `dev` vers `main` (déploiement en production).
+
+| Préfixe | Usage | Exemple |
+|---|---|---|
+| `feature/` | nouvelle fonctionnalité | `feature/pipeline`, `feature/front` |
+| `test/` | ajout ou correction de tests | `test/pipeline` |
+| `docs/` | documentation | `docs/readme` |
+| `refactor/` | réorganisation du code sans changement de comportement | `refactor/ruff` |
+
+### Messages de commit
+
+Les commits suivent la convention [Conventional Commits](https://www.conventionalcommits.org/fr/) :
+`type: description courte`, à l'impératif.
+
+| Type | Usage | Exemple tiré de l'historique |
+|---|---|---|
+| `feat` | nouvelle fonctionnalité | `feat: Implement GBFS parsing for version 2.x and 3.0` |
+| `fix` | correction de bug | `fix: Enhance station information parsing and add quality checks for locations` |
+| `test` | tests | `test: Add integration tests for Vélo'v and Hugging Face dataset interactions` |
+| `ci` | workflows GitHub Actions | `ci: Add integration workflow for staging environment` |
+| `refactor` | restructuration sans changement de comportement | `refactor: Organize imports … with ruff` |
+| `docs` | documentation | `docs: add capture image for documentation` |
+| `chore` | configuration, maintenance | `chore: Update pytest configuration to exclude integration tests` |
+
+Les types permettent de lire l'historique d'un coup d'œil et de générer plus tard un changelog automatiquement.
 
 ## Feuille de route
 
@@ -156,4 +188,5 @@ web/ -site React + TypeScript (Vite, Leaflet)
 | Horaires TCL (GTFS), V1        | SYTRAL Mobilités             | Licence Mobilités  |
 | Facteurs d'émission, V1       | ADEME (Impact CO2)            | Voir impactco2.fr   |
 
-Code sous licence MIT.
+Le code est distribué sous licence [MIT](LICENSE). Les données restent soumises à leurs licences
+respectives, indiquées dans le tableau ci-dessus.
