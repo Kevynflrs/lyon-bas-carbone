@@ -33,7 +33,13 @@ export function StationMap({ stations, selected }: { stations: Station[]; select
   const markers = useRef(new Map<string, LeafletCircleMarker>())
 
   return (
-    <MapContainer center={LYON_CENTER} zoom={13} preferCanvas className="map" aria-label="Carte des stations">
+    <MapContainer
+      center={LYON_CENTER}
+      zoom={13}
+      preferCanvas
+      className="map h-full w-full"
+      aria-label="Carte des stations"
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -58,20 +64,24 @@ export function StationMap({ stations, selected }: { stations: Station[]; select
             }}
           >
             <Popup>
-              <p className="popup-name">{displayName(station.name)}</p>
-              {station.renting ? (
-                <p className="popup-counts">
-                  <strong>{formatNumber(station.bikes ?? 0)}</strong>{' '}
-                  {plural(station.bikes ?? 0, 'vélo', 'vélos')},{' '}
-                  <strong>{formatNumber(station.docks ?? 0)}</strong>{' '}
-                  {plural(station.docks ?? 0, 'place libre', 'places libres')}
-                </p>
-              ) : (
-                <p className="popup-counts">Station hors service</p>
-              )}
-              {station.last_reported && (
-                <p className="popup-time">Relevé à {formatTime(station.last_reported)}</p>
-              )}
+              <div className="flex flex-col gap-1">
+                <p className="font-serif text-[1.05rem] font-semibold">{displayName(station.name)}</p>
+                {station.renting ? (
+                  <p>
+                    <strong>{formatNumber(station.bikes ?? 0)}</strong>{' '}
+                    {plural(station.bikes ?? 0, 'vélo', 'vélos')},{' '}
+                    <strong>{formatNumber(station.docks ?? 0)}</strong>{' '}
+                    {plural(station.docks ?? 0, 'place libre', 'places libres')}
+                  </p>
+                ) : (
+                  <p>Station hors service</p>
+                )}
+                {station.last_reported && (
+                  <p className="text-[0.82rem] text-encre-douce">
+                    Relevé à {formatTime(station.last_reported)}
+                  </p>
+                )}
+              </div>
             </Popup>
           </CircleMarker>
         )

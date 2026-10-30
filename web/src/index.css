@@ -1,74 +1,46 @@
-:root {
-  /* Lyon : la pierre des quais, le Rhône, l'ocre du Vieux Lyon, la brique. */
-  --pierre: #edf0ee;
-  --pierre-fonce: #dde3e0;
-  --encre: #1d2b33;
-  --encre-douce: #4d5d66;
-  --rhone: #1e6e8a;
-  --ocre: #c98f2e;
-  --brique: #a8432f;
+@import 'tailwindcss';
 
-  --serif: 'Spectral', Georgia, serif;
-  --sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
+/* Palette et polices du projet, utilisables dans les classes Tailwind :
+   bg-pierre, text-rhone, border-brique, font-serif... */
+@theme {
+  --color-pierre: #edf0ee; /* la pierre des quais */
+  --color-pierre-fonce: #dde3e0;
+  --color-encre: #1d2b33;
+  --color-encre-douce: #4d5d66;
+  --color-rhone: #1e6e8a; /* le Rhône : stations bien fournies */
+  --color-ocre: #c98f2e; /* l'ocre du Vieux Lyon : presque vides */
+  --color-brique: #a8432f; /* la brique : vides */
+  --color-brique-pale: #f6e9e5;
+  --color-gris: #8a9499; /* hors service */
 
-  color-scheme: light;
-  font-family: var(--sans);
-  font-size: 17px;
-  line-height: 1.5;
-  color: var(--encre);
-  background: var(--pierre);
-  -webkit-font-smoothing: antialiased;
+  --font-serif: 'Spectral', Georgia, serif;
+  --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply bg-pierre font-sans text-encre antialiased;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+  }
+
+  a {
+    @apply text-rhone underline underline-offset-[0.18em];
+  }
+
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-rhone;
+  }
 }
 
-body {
-  margin: 0;
-  background: var(--pierre);
-}
+/*
+   Leaflet : ces éléments sont créés par la bibliothèque et leur CSS d'origine l'emporte sur les classes Tailwind. 
+   On les ajuste donc en CSS classique.
+*/
 
-a {
-  color: var(--rhone);
-  text-underline-offset: 0.18em;
-}
-
-:focus-visible {
-  outline: 3px solid var(--rhone);
-  outline-offset: 2px;
-}
-
-/* ---------- Mise en page : panneau à gauche, carte à droite ---------- */
-
-.layout {
-  display: grid;
-  grid-template-columns: minmax(340px, 440px) 1fr;
-  min-height: 100vh;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2.25rem;
-  padding: 2.5rem 2.25rem 2rem;
-  max-height: 100vh;
-  overflow-y: auto;
-  border-right: 1px solid var(--pierre-fonce);
-}
-
-.map-wrap {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-}
-
-.map {
-  height: 100%;
-  width: 100%;
-  background: var(--pierre-fonce);
+.map.leaflet-container {
+  background: var(--color-pierre-fonce);
+  font-family: var(--font-sans);
 }
 
 /* Fond de carte désaturé : les couleurs de disponibilité restent seules à parler. */
@@ -76,261 +48,13 @@ a {
   filter: grayscale(1) contrast(0.85) brightness(1.08);
 }
 
-/* ---------- En-tête ---------- */
-
-.brand h1 {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.35rem;
-  letter-spacing: 0.01em;
-}
-
-.tagline {
-  margin: 0.15rem 0 0;
-  color: var(--encre-douce);
-  font-size: 0.95rem;
-}
-
-/* ---------- La phrase en direct : l'élément fort de la page ---------- */
-
-.sentence {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: clamp(1.9rem, 1.2rem + 1.6vw, 2.6rem);
-  line-height: 1.18;
-  text-wrap: balance;
-}
-
-.figure {
-  font-weight: 600;
-  font-variant-numeric: lining-nums tabular-nums;
-  color: var(--rhone);
-  white-space: nowrap;
-}
-
-.detail {
-  margin: 1rem 0 0;
-  max-width: 34em;
-}
-
-.freshness {
-  margin: 0.75rem 0 0;
-  font-size: 0.9rem;
-  color: var(--encre-douce);
-}
-
-.freshness-stale {
-  color: var(--brique);
-}
-
-/* ---------- États ---------- */
-
-.status {
-  margin: 0;
-}
-
-.status-error {
-  padding: 1rem 1.1rem;
-  border-left: 4px solid var(--brique);
-  background: #f6e9e5;
-}
-
-.status-error p {
-  margin: 0 0 0.75rem;
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.status-error button {
-  padding: 0.45rem 0.9rem;
-  border: 1px solid var(--encre);
-  border-radius: 4px;
-  background: transparent;
-}
-
-/* ---------- Recherche ---------- */
-
-.search label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-weight: 700;
-}
-
-.search input {
-  width: 100%;
-  padding: 0.65rem 0.8rem;
-  font: inherit;
-  color: var(--encre);
-  background: #fff;
-  border: 1px solid #b9c3c0;
-  border-radius: 4px;
-}
-
-.search input::placeholder {
-  color: #7d8a90;
-}
-
-.search-empty {
-  margin: 0.6rem 0 0;
-  color: var(--encre-douce);
-}
-
-.results {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-}
-
-.results button {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.65rem;
-  width: 100%;
-  padding: 0.55rem 0.35rem;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--pierre-fonce);
-}
-
-.results button:hover {
-  background: var(--pierre-fonce);
-}
-
-.result-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.result-count {
-  font-variant-numeric: tabular-nums;
-  color: var(--encre-douce);
-}
-
-/* ---------- Légende ---------- */
-
-.dot {
-  display: inline-block;
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 50%;
-  flex: none;
-}
-
-.dot-hollow {
-  border: 2px solid;
-  background: transparent;
-}
-
-.legend ul {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.92rem;
-}
-
-.legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.legend p {
-  margin: 0.6rem 0 0;
-  font-size: 0.85rem;
-  color: var(--encre-douce);
-}
-
-/* ---------- Prochaine étape ---------- */
-
-.next h2 {
-  margin: 0 0 0.4rem;
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 1.3rem;
-}
-
-.next p {
-  margin: 0;
-  color: var(--encre-douce);
-}
-
-/* ---------- Crédits ---------- */
-
-.credits {
-  margin-top: auto;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--pierre-fonce);
-  font-size: 0.82rem;
-  color: var(--encre-douce);
-}
-
-.credits p {
-  margin: 0 0 0.4rem;
-}
-
-/* ---------- Popups Leaflet ---------- */
-
 .leaflet-popup-content {
   margin: 0.75rem 0.9rem;
-  font-family: var(--sans);
   font-size: 0.95rem;
-  color: var(--encre);
+  line-height: 1.4;
+  color: var(--color-encre);
 }
 
 .leaflet-popup-content p {
   margin: 0;
-}
-
-.popup-name {
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.05rem;
-  margin-bottom: 0.2rem !important;
-}
-
-.popup-time {
-  margin-top: 0.25rem !important;
-  font-size: 0.82rem;
-  color: var(--encre-douce);
-}
-
-/* ---------- Mobile : la carte d'abord, le texte ensuite ---------- */
-
-@media (max-width: 760px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .map-wrap {
-    position: relative;
-    order: -1;
-    height: 52vh;
-  }
-
-  .panel {
-    max-height: none;
-    overflow: visible;
-    padding: 1.5rem 1rem 1.5rem;
-    border-right: 0;
-    gap: 1.75rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto !important;
-  }
 }
