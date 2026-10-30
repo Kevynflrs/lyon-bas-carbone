@@ -24,3 +24,5 @@ web/dist/
 .vscode/
 .idea/
 .DS_Store
+
+web/public/velov_latest.json

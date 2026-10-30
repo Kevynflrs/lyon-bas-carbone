@@ -4,7 +4,7 @@ on:
   schedule:
     # Toutes les 15 min, décalé du début d'heure (moins de retards côté GitHub).
     - cron: "7,22,37,52 * * * *"
-  workflow_dispatch: # bouton « Run workflow » pour tester à la main
+  workflow_dispatch: # bouton « Run workflow » pour tester manuellement
 
 permissions:
   contents: read
@@ -32,3 +32,9 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
         run: python -m pipeline.ingest.velov status
+
+      - name: Instantané pour le site web (JSON public)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
+        run: python -m pipeline.export.snapshot

@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+
+/* Palette et polices du projet, utilisables dans les classes Tailwind :
+   bg-pierre, text-rhone, border-brique, font-serif... */
+@theme {
+  --color-pierre: #edf0ee; /* la pierre des quais */
+  --color-pierre-fonce: #dde3e0;
+  --color-encre: #1d2b33;
+  --color-encre-douce: #4d5d66;
+  --color-rhone: #1e6e8a; /* le Rhône : stations bien fournies */
+  --color-ocre: #c98f2e; /* l'ocre du Vieux Lyon : presque vides */
+  --color-brique: #a8432f; /* la brique : vides */
+  --color-brique-pale: #f6e9e5;
+  --color-gris: #8a9499; /* hors service */
+
+  --font-serif: 'Spectral', Georgia, serif;
+  --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-pierre font-sans text-encre antialiased;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+  }
+
+  a {
+    @apply text-rhone underline underline-offset-[0.18em];
+  }
+
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-rhone;
+  }
+}
+
+/*
+   Leaflet : ces éléments sont créés par la bibliothèque et leur CSS d'origine l'emporte sur les classes Tailwind. 
+   On les ajuste donc en CSS classique.
+*/
+
+.map.leaflet-container {
+  background: var(--color-pierre-fonce);
+  font-family: var(--font-sans);
+}
+
+/* Fond de carte désaturé : les couleurs de disponibilité restent seules à parler. */
+.map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.85) brightness(1.08);
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--color-encre);
+}
+
+.leaflet-popup-content p {
+  margin: 0;
+}

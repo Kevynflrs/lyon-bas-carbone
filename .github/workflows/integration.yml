@@ -52,3 +52,4 @@ jobs:
           python -m pipeline.ingest.velov status
           python -m pipeline.ingest.velov information
           python -m pipeline.ingest.compact --date "$(date -u +%F)"
+          python -m pipeline.export.snapshot
