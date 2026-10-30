@@ -1,10 +1,13 @@
 """Client HTTP avec retries : les flux open data tombent parfois quelques minutes."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
 from pipeline.config import HTTP_TIMEOUT_S, USER_AGENT
 
 

@@ -3,6 +3,7 @@
 Aucun secret n'est écrit dans le code : en local, ils viennent d'un fichier .env
 (non versionné) ; dans GitHub Actions, des GitHub Secrets / Variables.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,16 +12,23 @@ from pathlib import Path
 
 try:  # en local, charge automatiquement le fichier .env s'il existe
     from dotenv import load_dotenv
+
     load_dotenv()
 
 except ImportError:
     pass
 
 # Flux GBFS Vélo'v (Métropole de Lyon / JCDecaux, Licence Ouverte 2.0, sans clé).
-VELOV_GBFS_URL = os.getenv("VELOV_GBFS_URL", "https://download.data.grandlyon.com/files/rdata/jcd_jcdecaux.jcdvelov/gbfs.json",)
+VELOV_GBFS_URL = os.getenv(
+    "VELOV_GBFS_URL",
+    "https://download.data.grandlyon.com/files/rdata/jcd_jcdecaux.jcdvelov/gbfs.json",
+)
 
 # Flux ImpactCO2 (API key gratuite, https://impactco2.fr/api).
-USER_AGENT = os.getenv("PIPELINE_USER_AGENT", "lyon-bas-carbone/0.1 (projet portfolio open source)",)
+USER_AGENT = os.getenv(
+    "PIPELINE_USER_AGENT",
+    "lyon-bas-carbone/0.1 (projet portfolio open source)",
+)
 HTTP_TIMEOUT_S = float(os.getenv("HTTP_TIMEOUT_S", "20"))
 
 # Développement local sans accès à Hugging Face).
