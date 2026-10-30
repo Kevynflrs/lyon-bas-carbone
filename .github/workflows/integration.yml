@@ -1,0 +1,54 @@
+name: Intégration (staging)
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN_STAGING }}
+      HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO_STAGING }}
+      ALLOW_HUB_WRITE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: Garde-fou (ne jamais écrire dans le dataset de production)
+        env:
+          PROD_REPO: ${{ vars.HF_DATASET_REPO }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_DATASET_REPO" ]; then
+            echo "::error::HF_TOKEN_STAGING ou HF_DATASET_REPO_STAGING manquant"; exit 1
+          fi
+          if [ "$HF_DATASET_REPO" = "$PROD_REPO" ]; then
+            echo "::error::Le dataset de staging est identique à celui de production"; exit 1
+          fi
+
+      - name: Tests d'intégration (vrai flux Vélo'v + Hugging Face staging)
+        run: pytest -m integration -v
+
+      - name: Pipeline de bout en bout vers le staging
+        run: |
+          python -m pipeline.ingest.velov status
+          python -m pipeline.ingest.velov information
+          python -m pipeline.ingest.compact --date "$(date -u +%F)"
