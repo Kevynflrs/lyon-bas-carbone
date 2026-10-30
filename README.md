@@ -5,6 +5,9 @@
 [![Déploiement](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/deploy.yml/badge.svg)](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/deploy.yml)
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-1e6e8a.svg)](LICENSE)
 
+Le projet est né d’un constat d’usager : l’application TCL m’indique quand passe mon tram, mais jamais ce que j’économise en CO2 en le prenant plutôt que la voiture. Lyon bas carbone est un projet personnel de Data Engineering et de Data Science. Un pipeline Python, orchestré par GitHub Actions, collecte toutes les 15 minutes l’état des 460 stations Vélo’v, l’historise en Parquet sur Hugging Face et compacte les fichiers chaque nuit. Le code passe par deux environnements : des tests d’intégration sur le vrai flux de données, avec un dataset de staging, puis un smoke test avant chaque mise en production. Ces tests ont déjà révélé deux anomalies réelles dans les données ouvertes. Un site React publié sur GitHub Pages affiche les disponibilités en direct. Les prochaines étapes : un comparateur CO2 des trajets (TCL, vélo, marche, voiture), des transformations dbt + DuckDB, et un modèle qui prédit la disponibilité des stations à une heure. L’ensemble tourne gratuitement, sans aucun serveur.
+
+
 Pour un trajet dans la métropole de Lyon, comparer **transports en commun, Vélo'v, marche et voiture**
 selon le temps, la fiabilité et le CO2 émis. Avec une méthodologie transparente, y compris quand
 le vélo ou la marche font mieux que le tram.
@@ -54,14 +57,14 @@ flowchart LR
     dbt -.-> ml["Modèles ML, V3"]
 ```
 
-| Besoin               | Outil                              | Pourquoi ce choix                                                   |
-| -------------------- | ---------------------------------- | ------------------------------------------------------------------- |
-| Orchestration        | GitHub Actions                     | Crons gratuits pour un dépôt public, déjà intégrés à la CI   |
-| Stockage brut        | Dataset Hugging Face (Parquet,)    | Stockage public gratuit, versionné, lisible directement par DuckDB |
-| Front | React + TypeScript (Vite), Tailwind CSS, Leaflet | Site statique sur GitHub Pages : toujours en ligne, aucun serveur |
-| Qualité du code     | ruff, pytest, oxlint               | Lint et tests à chaque push                                        |
-| Transformations (V2) | dbt + DuckDB                       | Moteur analytique local, aucun entrepôt à payer                   |
-| ML (V3)              | LightGBM, scikit-learn             | Données tabulaires et temporelles                                  |
+| Besoin               | Outil                                            | Pourquoi ce choix                                                   |
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
+| Orchestration        | GitHub Actions                                   | Crons gratuits pour un dépôt public, déjà intégrés à la CI   |
+| Stockage brut        | Dataset Hugging Face (Parquet,)                  | Stockage public gratuit, versionné, lisible directement par DuckDB |
+| Front                | React + TypeScript (Vite), Tailwind CSS, Leaflet | Site statique sur GitHub Pages : toujours en ligne, aucun serveur   |
+| Qualité du code     | ruff, pytest, oxlint                             | Lint et tests à chaque push                                        |
+| Transformations (V2) | dbt + DuckDB                                     | Moteur analytique local, aucun entrepôt à payer                   |
+| ML (V3)              | LightGBM, scikit-learn                           | Données tabulaires et temporelles                                  |
 
 ### Choix de conception
 
@@ -147,27 +150,27 @@ web/ -site React + TypeScript (Vite, Tailwind CSS, Leaflet)
 Chaque modification passe par une branche dédiée, puis par une Pull Request : d'abord vers `dev`
 (CI + tests d'intégration), puis de `dev` vers `main` (déploiement en production).
 
-| Préfixe | Usage | Exemple |
-|---|---|---|
-| `feature/` | nouvelle fonctionnalité | `feature/pipeline`, `feature/front` |
-| `test/` | ajout ou correction de tests | `test/pipeline` |
-| `docs/` | documentation | `docs/readme` |
-| `refactor/` | réorganisation du code sans changement de comportement | `refactor/ruff` |
+| Préfixe      | Usage                                                   | Exemple                                 |
+| ------------- | ------------------------------------------------------- | --------------------------------------- |
+| `feature/`  | nouvelle fonctionnalité                                | `feature/pipeline`, `feature/front` |
+| `test/`     | ajout ou correction de tests                            | `test/pipeline`                       |
+| `docs/`     | documentation                                           | `docs/readme`                         |
+| `refactor/` | réorganisation du code sans changement de comportement | `refactor/ruff`                       |
 
 ### Messages de commit
 
 Les commits suivent la convention [Conventional Commits](https://www.conventionalcommits.org/fr/) :
 `type: description courte`, à l'impératif.
 
-| Type | Usage | Exemple tiré de l'historique |
-|---|---|---|
-| `feat` | nouvelle fonctionnalité | `feat: Implement GBFS parsing for version 2.x and 3.0` |
-| `fix` | correction de bug | `fix: Enhance station information parsing and add quality checks for locations` |
-| `test` | tests | `test: Add integration tests for Vélo'v and Hugging Face dataset interactions` |
-| `ci` | workflows GitHub Actions | `ci: Add integration workflow for staging environment` |
-| `refactor` | restructuration sans changement de comportement | `refactor: Organize imports … with ruff` |
-| `docs` | documentation | `docs: add capture image for documentation` |
-| `chore` | configuration, maintenance | `chore: Update pytest configuration to exclude integration tests` |
+| Type         | Usage                                           | Exemple tiré de l'historique                                                     |
+| ------------ | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| `feat`     | nouvelle fonctionnalité                        | `feat: Implement GBFS parsing for version 2.x and 3.0`                          |
+| `fix`      | correction de bug                               | `fix: Enhance station information parsing and add quality checks for locations` |
+| `test`     | tests                                           | `test: Add integration tests for Vélo'v and Hugging Face dataset interactions` |
+| `ci`       | workflows GitHub Actions                        | `ci: Add integration workflow for staging environment`                          |
+| `refactor` | restructuration sans changement de comportement | `refactor: Organize imports … with ruff`                                       |
+| `docs`     | documentation                                   | `docs: add capture image for documentation`                                     |
+| `chore`    | configuration, maintenance                      | `chore: Update pytest configuration to exclude integration tests`               |
 
 Les types permettent de lire l'historique d'un coup d'œil et de générer plus tard un changelog automatiquement.
 
