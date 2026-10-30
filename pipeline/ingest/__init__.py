@@ -1,0 +1,1 @@
+"""Scripts de collecte (lancés par GitHub Actions)."""
