@@ -12,13 +12,12 @@ import pytest
 from pipeline.config import VELOV_GBFS_URL, hub_settings
 from pipeline.http import fetch_json
 from pipeline.ingest.gbfs import discover_feeds, parse_station_information, parse_station_status
+from pipeline.ingest.velov import outside_service_area
 from pipeline.storage import write_parquet
 
 pytestmark = pytest.mark.integration
 
 MIN_STATIONS = 100  # Vélo'v compte plusieurs centaines de stations
-LAT_RANGE = (45.55, 45.95)  # emprise large de la métropole de Lyon
-LON_RANGE = (4.65, 5.15)
 
 
 @pytest.fixture(scope="module")
@@ -48,8 +47,15 @@ def test_live_feed_is_fresh(live):
 
 def test_live_stations_are_in_lyon_and_match_status(live):
     info, status = live["information"], live["status"]
-    assert info["lat"].between(*LAT_RANGE).all()
-    assert info["lon"].between(*LON_RANGE).all()
+    # Quelques stations sans position (coordonnées 0, 0 côté producteur) sont tolérées.
+    located = info.dropna(subset=["lat", "lon"])
+    assert len(located) / len(info) > 0.95, f"{len(info) - len(located)} stations sans coordonnées"
+    # Quelques stations techniques hors de Lyon sont tolérées ; une proportion élevée
+    # signalerait un flux cassé (latitude/longitude inversées, mauvaise ville...).
+    outside = outside_service_area(info)
+    assert len(outside) / len(located) < 0.02, (
+        f"{len(outside)} stations hors de Lyon :\n{outside[['station_id', 'name', 'lat', 'lon']]}"
+    )
     known = status["station_id"].isin(info["station_id"]).mean()
     assert known > 0.9, f"Seulement {known:.0%} des stations du statut sont dans le référentiel"
 

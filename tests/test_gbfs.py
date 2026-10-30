@@ -10,6 +10,7 @@ from pipeline.ingest.compact import merge_parts
 from pipeline.ingest.gbfs import (
     GBFSError,
     discover_feeds,
+    information_quality_warnings,
     parse_station_information,
     parse_station_status,
     quality_warnings,
@@ -51,6 +52,25 @@ def test_parse_information_v3_picks_french_name():
     df = parse_station_information(INFORMATION_V3, NOW).set_index("station_id")
     assert df.loc["7024", "name"] == "Exemple Station B"
     assert df.loc["2010", "capacity"] == 20
+
+
+def test_null_island_coordinates_become_missing():
+    """Une station à (0, 0) a une position inconnue : elle est gardée, sans coordonnées."""
+    doc = json.loads(json.dumps(INFORMATION_V3))
+    doc["data"]["stations"][1].update(lat=0.0, lon=0.0)
+    df = parse_station_information(doc, NOW).set_index("station_id")
+    assert len(df) == 2
+    assert pd.isna(df.loc["7024", "lat"]) and pd.isna(df.loc["7024", "lon"])
+    assert df.loc["2010", "lat"] == 45.7578
+    (warning,) = information_quality_warnings(df.reset_index())
+    assert "1 stations sans coordonnées : 7024" in warning
+
+
+def test_outside_service_area_flags_stations_far_from_lyon():
+    doc = json.loads(json.dumps(INFORMATION_V3))
+    doc["data"]["stations"][1].update(lat=48.799974, lon=1.946202)  # cas réel : Plaisir (78)
+    outside = velov.outside_service_area(parse_station_information(doc, NOW))
+    assert outside["station_id"].tolist() == ["7024"]
 
 
 def test_empty_status_raises():

@@ -151,8 +151,7 @@ def parse_station_information(doc: dict[str, Any], collected_at: pd.Timestamp) -
         }
         for s in _stations(doc, "station_information")
     ]
-    df = pd.DataFrame(rows, columns=INFORMATION_COLUMNS)
-    return df.astype(
+    df = pd.DataFrame(rows, columns=INFORMATION_COLUMNS).astype(
         {
             "station_id": "string",
             "name": "string",
@@ -163,6 +162,11 @@ def parse_station_information(doc: dict[str, Any], collected_at: pd.Timestamp) -
             "gbfs_version": "string",
         }
     )
+    # Certains producteurs mettent (0, 0) quand la position est inconnue (« Null Island »,
+    # dans le golfe de Guinée) : on stocke une valeur manquante plutôt qu'un faux point.
+    unknown_position = (df["lat"] == 0) | (df["lon"] == 0)
+    df.loc[unknown_position, ["lat", "lon"]] = float("nan")
+    return df
 
 
 def quality_warnings(status: pd.DataFrame) -> list[str]:
@@ -177,4 +181,16 @@ def quality_warnings(status: pd.DataFrame) -> list[str]:
     missing = int(status["num_bikes_available"].isna().sum())
     if missing:
         warnings.append(f"{missing} stations sans nombre de vélos")
+    return warnings
+
+
+def information_quality_warnings(information: pd.DataFrame) -> list[str]:
+    """Contrôles légers du référentiel des stations."""
+    warnings = []
+    duplicated = int(information["station_id"].duplicated().sum())
+    if duplicated:
+        warnings.append(f"{duplicated} station_id en double")
+    no_position = information.loc[information["lat"].isna() | information["lon"].isna(), "station_id"]
+    if len(no_position):
+        warnings.append(f"{len(no_position)} stations sans coordonnées : {', '.join(no_position.head(10))}")
     return warnings

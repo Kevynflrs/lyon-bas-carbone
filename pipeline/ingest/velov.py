@@ -25,6 +25,7 @@ from pipeline.config import VELOV_GBFS_URL, HubSettings, hub_settings
 from pipeline.http import fetch_json
 from pipeline.ingest.gbfs import (
     discover_feeds,
+    information_quality_warnings,
     parse_station_information,
     parse_station_status,
     quality_warnings,
@@ -35,7 +36,23 @@ log = logging.getLogger("velov")
 
 STATUS_PREFIX = "raw/velov/station_status"
 INFORMATION_PREFIX = "raw/velov/station_information"
+
+# Emprise large de la métropole de Lyon : (lat_min, lat_max, lon_min, lon_max).
+LYON_BBOX = (45.55, 45.95, 4.65, 5.15)
+
 Fetcher = Callable[[str], Any]
+
+
+def outside_service_area(information: pd.DataFrame) -> pd.DataFrame:
+    """Stations dont la position connue est hors de la métropole.
+
+    Exemple réel : une station « PLATINE PLAISIR » située dans les Yvelines, probablement
+    technique. Elles sont gardées dans les données brutes et exclues en aval (dbt).
+    """
+    lat_min, lat_max, lon_min, lon_max = LYON_BBOX
+    located = information.dropna(subset=["lat", "lon"])
+    inside = located["lat"].between(lat_min, lat_max) & located["lon"].between(lon_min, lon_max)
+    return located[~inside]
 
 
 def status_path(collected_at: pd.Timestamp) -> str:
@@ -69,6 +86,15 @@ def collect(
         path = status_path(collected_at)
     elif what == "information":
         df = parse_station_information(fetch(feeds["station_information"]), collected_at)
+        for warning in information_quality_warnings(df):
+            log.warning("Qualité : %s", warning)
+        outside = outside_service_area(df)
+        if not outside.empty:
+            log.warning(
+                "Qualité : %s stations hors de la métropole (exclues en aval) : %s",
+                len(outside),
+                ", ".join(f"{row.station_id} {row.name}" for row in outside.itertuples()),
+            )
         log.info("%s stations dans le référentiel", len(df))
         path = information_path(collected_at)
     else:
