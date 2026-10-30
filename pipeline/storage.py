@@ -1,10 +1,13 @@
 """Écriture des fichiers Parquet : dataset Hugging Face, ou disque local en dev."""
 
 from __future__ import annotations
+
 import io
 import logging
 from pathlib import Path
+
 import pandas as pd
+
 from pipeline.config import LOCAL_DATA_DIR, HubSettings
 
 log = logging.getLogger(__name__)

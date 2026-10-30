@@ -14,11 +14,14 @@ Usage :
 """
 
 from __future__ import annotations
+
 import argparse
 import logging
 import sys
 from datetime import date, timedelta
+
 import pandas as pd
+
 from pipeline.config import hub_settings
 from pipeline.ingest.velov import STATUS_PREFIX
 from pipeline.storage import to_parquet_bytes

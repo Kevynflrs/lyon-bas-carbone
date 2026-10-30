@@ -1,7 +1,9 @@
 import json
+
 import pandas as pd
 import pytest
 from conftest import GBFS_V2, GBFS_V3, INFORMATION_V3, NOW, STATUS_V2, STATUS_V3
+
 from pipeline.config import HubSettings
 from pipeline.ingest import velov
 from pipeline.ingest.compact import merge_parts

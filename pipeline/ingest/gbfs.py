@@ -10,9 +10,11 @@ Ces fonctions sont pures (aucun appel réseau) pour être testables facilement.
 """
 
 from __future__ import annotations
+
 import json
 from datetime import datetime
 from typing import Any
+
 import pandas as pd
 
 STATUS_COLUMNS = [

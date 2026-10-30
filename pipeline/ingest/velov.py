@@ -12,12 +12,15 @@ Partitionnement (dates en UTC, la conversion en heure de Paris se fera dans dbt)
 """
 
 from __future__ import annotations
+
 import argparse
 import logging
 import sys
 from collections.abc import Callable
 from typing import Any
+
 import pandas as pd
+
 from pipeline.config import VELOV_GBFS_URL, HubSettings, hub_settings
 from pipeline.http import fetch_json
 from pipeline.ingest.gbfs import (

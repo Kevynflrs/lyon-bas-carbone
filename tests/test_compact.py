@@ -3,9 +3,11 @@
 import io
 from datetime import date
 from types import SimpleNamespace
+
 import huggingface_hub
 import pandas as pd
 from conftest import STATUS_V2
+
 from pipeline.config import HubSettings
 from pipeline.ingest import compact
 from pipeline.ingest.gbfs import parse_station_status
