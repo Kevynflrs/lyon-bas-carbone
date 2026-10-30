@@ -3,9 +3,11 @@
 import io
 from datetime import date
 from types import SimpleNamespace
+
 import huggingface_hub
 import pandas as pd
 from conftest import STATUS_V2
+
 from pipeline.config import HubSettings
 from pipeline.ingest import compact
 from pipeline.ingest.gbfs import parse_station_status
@@ -56,6 +58,21 @@ def test_compact_day_merges_and_deletes_small_files(tmp_path, monkeypatch):
 
 def test_compact_day_skips_already_compacted(monkeypatch):
     api = FakeApi([f"{FOLDER}/compacted.parquet"])
+    fake_hub(monkeypatch, api)
+    assert compact.compact_day(date(2026, 10, 28)) is None
+    assert api.commits == []
+
+
+def test_compact_day_without_data_does_not_crash(monkeypatch):
+    """Un jour sans données (dossier absent sur le Hub) ne doit pas faire planter la compaction."""
+    from huggingface_hub.errors import RemoteEntryNotFoundError
+
+    class EmptyApi(FakeApi):
+        def list_repo_tree(self, repo_id, path_in_repo, repo_type):
+            # Instance créée sans __init__ : le constructeur exige une vraie réponse HTTP.
+            raise RemoteEntryNotFoundError.__new__(RemoteEntryNotFoundError)
+
+    api = EmptyApi([])
     fake_hub(monkeypatch, api)
     assert compact.compact_day(date(2026, 10, 28)) is None
     assert api.commits == []
