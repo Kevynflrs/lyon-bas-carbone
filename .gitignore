@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Données
+data/
+*.parquet
+*.duckdb
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# ML
+mlruns/
+
+# Front
+node_modules/
+web/dist/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store
