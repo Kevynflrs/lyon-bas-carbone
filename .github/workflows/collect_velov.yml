@@ -32,3 +32,9 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
         run: python -m pipeline.ingest.velov status
+
+      - name: Instantané pour le site web (JSON public)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
+        run: python -m pipeline.export.snapshot
