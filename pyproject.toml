@@ -1,0 +1,20 @@
+[project]
+name = "lyon-bas-carbone"
+version = "0.1.0"
+description = "Comparateur CO2 des trajets à Lyon (TCL, Vélo'v, marche, voiture) : pipeline de données + ML."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+# Les tests d'intégration sont exclus par défaut : pytest -m integration
+addopts = "-m 'not integration'"
+markers = ["integration: vrais appels réseau (flux Vélo'v, Hugging Face de staging)"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
