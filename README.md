@@ -1,4 +1,3 @@
-
 # Lyon bas carbone
 
 [![CI](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kevynflrs/lyon-bas-carbone/actions/workflows/ci.yml)
@@ -21,16 +20,16 @@ qualité, CI/CD à deux environnements, site web statique. **100 % gratuit, aucu
 
 ## Où en est le projet
 
-| Brique                                                                            | État            |
-| --------------------------------------------------------------------------------- | ---------------- |
-| Collecte Vélo'v toutes les 15 min, historisée en Parquet                        | ✅ en production |
-| Compaction quotidienne des fichiers                                               | ✅ en production |
-| Site web : disponibilités en direct, recherche de station                        | ✅ en ligne      |
-| CI/CD : tests d'intégration sur `dev`, smoke test et déploiement sur `main` | ✅               |
-| Comparateur de trajets (temps, CO2)                                               | 🚧 V1, en cours  |
-| Transformations dbt + DuckDB                                                      | V2               |
-| Prédiction de disponibilité à H+1                                              | V3               |
-| Réentraînement planifié, suivi de dérive                                      | V4               |
+| Brique                                                                            | État         |
+| --------------------------------------------------------------------------------- | ------------- |
+| Collecte Vélo'v toutes les 15 min, historisée en Parquet                        | en production |
+| Compaction quotidienne des fichiers                                               | en production |
+| Site web : disponibilités en direct, recherche de station                        | en ligne      |
+| CI/CD : tests d'intégration sur `dev`, smoke test et déploiement sur `main` | ok            |
+| Comparateur de trajets (temps, CO2)                                               | V1, en cours  |
+| Transformations dbt + DuckDB                                                      | V2            |
+| Prédiction de disponibilité à H+1                                              | V3            |
+| Réentraînement planifié, suivi de dérive                                      | V4            |
 
 ## Architecture
 
@@ -54,14 +53,14 @@ flowchart LR
     dbt -.-> ml["Modèles ML, V3"]
 ```
 
-| Besoin               | Outil                                | Pourquoi ce choix                                                   |
-| -------------------- | ------------------------------------ | ------------------------------------------------------------------- |
-| Orchestration        | GitHub Actions                       | Crons gratuits pour un dépôt public, déjà intégrés à la CI   |
-| Stockage brut        | Dataset Hugging Face (Parquet, zstd) | Stockage public gratuit, versionné, lisible directement par DuckDB |
-| Front                | React + TypeScript (Vite), Leaflet   | Site statique sur GitHub Pages : toujours en ligne, aucun serveur   |
-| Qualité du code     | ruff, pytest, oxlint                 | Lint et tests à chaque push                                        |
-| Transformations (V2) | dbt + DuckDB                         | Moteur analytique local, aucun entrepôt à payer                   |
-| ML (V3)              | LightGBM, scikit-learn               | Données tabulaires et temporelles                                  |
+| Besoin               | Outil                              | Pourquoi ce choix                                                   |
+| -------------------- | ---------------------------------- | ------------------------------------------------------------------- |
+| Orchestration        | GitHub Actions                     | Crons gratuits pour un dépôt public, déjà intégrés à la CI   |
+| Stockage brut        | Dataset Hugging Face (Parquet,)    | Stockage public gratuit, versionné, lisible directement par DuckDB |
+| Front                | React + TypeScript (Vite), Leaflet | Site statique sur GitHub Pages : toujours en ligne, aucun serveur   |
+| Qualité du code     | ruff, pytest, oxlint               | Lint et tests à chaque push                                        |
+| Transformations (V2) | dbt + DuckDB                       | Moteur analytique local, aucun entrepôt à payer                   |
+| ML (V3)              | LightGBM, scikit-learn             | Données tabulaires et temporelles                                  |
 
 ### Choix de conception
 
@@ -74,15 +73,6 @@ flowchart LR
 - **Aucun secret dans le code** : `.env` en local, GitHub Secrets en CI.
 
 ## CI/CD : deux environnements
-
-```
-dev  ──push──►  tests unitaires + build du site + tests d'intégration (dataset de STAGING)
- │
- └─ Pull Request dev → main  ──►  les mêmes vérifications, obligatoires pour fusionner
-                                        │
-                     fusion ──► main ──► smoke test (vraie collecte en PRODUCTION)
-                                        └► déploiement du site sur GitHub Pages
-```
 
 | Workflow              | Déclencheur                       | Rôle                                                                                         |
 | --------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -119,17 +109,17 @@ cd lyon-bas-carbone
 
 # Pipeline Python
 python -m venv .venv
-source .venv/bin/activate              # Windows : .venv\Scripts\Activate.ps1
+source .venv/bin/activate # Windows : .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
-pytest -q                              # tests unitaires, sans réseau
-pytest -m integration                  # tests sur le vrai flux Vélo'v
-python -m pipeline.ingest.velov status --local      # collecte réelle dans ./data
-python -m pipeline.export.snapshot --local          # JSON du site dans ./data/public
+pytest -q  # tests unitaires, sans réseau
+pytest -m integration # tests sur le vrai flux Vélo'v
+python -m pipeline.ingest.velov status --local # collecte réelle dans ./data
+python -m pipeline.export.snapshot --local # JSON du site dans ./data/public
 
 # Site web
 cd web
 npm install
-npm run dev                            # http://localhost:5173
+npm run dev # http://localhost:5173
 ```
 
 Pour écrire sur Hugging Face, copier `.env.example` en `.env` et renseigner `HF_TOKEN` et `HF_DATASET_REPO`.
@@ -138,21 +128,21 @@ Pour écrire sur Hugging Face, copier `.env.example` en `.env` et renseigner `HF
 
 ```
 pipeline/
-  ingest/gbfs.py       parsing GBFS 2.x et 3.0 (fonctions pures)
-  ingest/velov.py      collecte Vélo'v vers Parquet, contrôles de zone
-  ingest/compact.py    fusion quotidienne des petits fichiers
-  export/snapshot.py   JSON public lu par le site
-  storage.py           écriture Hugging Face ou locale
-tests/                 tests unitaires (sans réseau)
-tests/integration/     tests sur le vrai flux et le dataset de staging
-web/                   site React + TypeScript (Vite, Leaflet)
-.github/workflows/     CI, intégration, déploiement, collecte, tâches quotidiennes
+  ingest/gbfs.py -parsing GBFS 2.x et 3.0 (fonctions pures)
+  ingest/velov.py -collecte Vélo'v vers Parquet, contrôles de zone
+  ingest/compact.py -fusion quotidienne des petits fichiers
+  export/snapshot.py -JSON public lu par le site
+  storage.py -écriture Hugging Face ou locale
+tests/ -tests unitaires (sans réseau)
+tests/integration/ -tests sur le vrai flux et le dataset de staging
+web/ -site React + TypeScript (Vite, Leaflet)
+.github/workflows/ -CI, intégration, déploiement, collecte, tâches quotidiennes
 ```
 
 ## Feuille de route
 
 - [X] **V0, socle** : collecte, compaction, CI/CD à deux environnements, site des disponibilités
-- [ ] **V1, comparateur CO2** : GTFS TCL, matrice de trajets (r5py), facteurs d'émission ADEME
+- [ ] **V1, comparateur CO2** : GTFS TCL, matrice de trajets, facteurs d'émission ADEME
 - [ ] **V2, pipeline analytique** : dbt + DuckDB, météo, tests de qualité dbt, dashboard
 - [ ] **V3, machine learning** : disponibilité Vélo'v à H+1, comparée à des baselines
 - [ ] **V4, MLOps** : réentraînement planifié, suivi de dérive (Evidently)
