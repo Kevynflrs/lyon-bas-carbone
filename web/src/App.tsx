@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { REPO_URL, STALE_AFTER_MS } from './config'
+  import { APP_VERSION, REPO_URL, STALE_AFTER_MS } from './config'
 import { displayName, formatAge, formatNumber, formatTime, normalize, plural } from './format'
 import { StationMap } from './StationMap'
 import { availability, COLORS, type Snapshot, type Station } from './types'
@@ -65,6 +65,9 @@ export default function App() {
           <p>Projet indépendant, sans lien avec la Métropole de Lyon, SYTRAL Mobilités ou JCDecaux.</p>
           <p>
             <a href={REPO_URL}>Voir le code sur GitHub</a>
+          </p>
+          <p>
+            <a href={`${REPO_URL}/releases`}>Version {APP_VERSION}</a>
           </p>
         </footer>
       </main>

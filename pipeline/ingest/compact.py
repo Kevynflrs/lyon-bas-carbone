@@ -8,8 +8,11 @@ petits (« small files problem »).
 La compaction est idempotente : relancée sur un jour déjà compacté, elle fusionne
 le fichier compacté avec d'éventuels retardataires et dédoublonne.
 
+Elle mesure aussi la couverture de la journée : la part des 96 collectes attendues
+réellement présentes. Une couverture faible signale des trous dans l'historique.
+
 Usage :
-    python -m pipeline.ingest.compact # compacte la veille (UTC)
+    python -m pipeline.ingest.compact                 # compacte la veille (UTC)
     python -m pipeline.ingest.compact --date 2026-11-02
 """
 
@@ -27,7 +30,13 @@ from pipeline.ingest.velov import STATUS_PREFIX
 from pipeline.storage import to_parquet_bytes
 
 log = logging.getLogger("compact")
+
 COMPACTED_NAME = "compacted.parquet"
+
+# Une collecte toutes les 15 minutes : 96 instantanés attendus par jour.
+EXPECTED_SNAPSHOTS_PER_DAY = 96
+# En dessous, la journée est signalée comme incomplète (trous dans l'historique).
+MIN_COVERAGE = 0.9
 
 
 def merge_parts(parts: list[pd.DataFrame]) -> pd.DataFrame:
@@ -37,6 +46,11 @@ def merge_parts(parts: list[pd.DataFrame]) -> pd.DataFrame:
     merged = pd.concat(parts, ignore_index=True)
     merged = merged.drop_duplicates(subset=["station_id", "collected_at"], keep="last")
     return merged.sort_values(["collected_at", "station_id"]).reset_index(drop=True)
+
+
+def daily_coverage(merged: pd.DataFrame) -> float:
+    """Part des 96 collectes attendues effectivement présentes dans la journée (0 à 1)."""
+    return min(1.0, merged["collected_at"].nunique() / EXPECTED_SNAPSHOTS_PER_DAY)
 
 
 def compact_day(day: date, prefix: str = STATUS_PREFIX) -> str | None:
@@ -69,16 +83,32 @@ def compact_day(day: date, prefix: str = STATUS_PREFIX) -> str | None:
     ]
     merged = merge_parts(parts)
     target = f"{folder}/{COMPACTED_NAME}"
+    coverage = daily_coverage(merged)
+    if coverage < MIN_COVERAGE:
+        log.warning(
+            "Qualité : %s collectes sur %s attendues pour %s (couverture %.0f %%)",
+            merged["collected_at"].nunique(),
+            EXPECTED_SNAPSHOTS_PER_DAY,
+            day,
+            coverage * 100,
+        )
 
     operations = [CommitOperationAdd(path_in_repo=target, path_or_fileobj=to_parquet_bytes(merged))]
     operations += [CommitOperationDelete(path_in_repo=f) for f in small_files]
     api.create_commit(
         hub.repo_id,
         operations=operations,
-        commit_message=f"compaction {folder} ({len(small_files)} fichiers -> 1)",
+        commit_message=f"compaction {folder} ({len(small_files)} fichiers -> 1, couverture {coverage:.0%})",
         repo_type="dataset",
     )
-    log.info("%s : %s fichiers -> %s (%s lignes)", day, len(files), target, len(merged))
+    log.info(
+        "%s : %s fichiers -> %s (%s lignes, couverture %.0f %%)",
+        day,
+        len(files),
+        target,
+        len(merged),
+        coverage * 100,
+    )
     return target
 
 
