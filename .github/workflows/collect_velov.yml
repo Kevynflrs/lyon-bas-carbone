@@ -1,10 +1,14 @@
 name: Collecte Vélo'v
 
 on:
+  # Déclencheur principal : un planificateur externe (cron-job.org) appelle l'API GitHub
+  # toutes les 15 minutes. Le cron GitHub seul n'est pas fiable : en cas de forte charge,
+  # les exécutions planifiées sont retardées ou abandonnées (4 à 5 collectes par jour
+  # observées au lieu de 96 en novembre 2026).
+  workflow_dispatch:
+  # Filet de sécurité si le planificateur externe tombe : une collecte par heure au minimum.
   schedule:
-    # Toutes les 15 min, décalé du début d'heure (moins de retards côté GitHub).
-    - cron: "7,22,37,52 * * * *"
-  workflow_dispatch: # bouton « Run workflow » pour tester manuellement
+    - cron: "41 * * * *"
 
 permissions:
   contents: read
