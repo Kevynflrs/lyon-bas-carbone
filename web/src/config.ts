@@ -7,6 +7,9 @@ export const SNAPSHOT_URL: string =
 export const REPO_URL: string =
   import.meta.env.VITE_REPO_URL ?? 'https://github.com/Kevynflrs/lyon-bas-carbone'
 
+
+export const APP_VERSION: string = __APP_VERSION__
+
 // Le front relit le fichier toutes les 5 minutes ; la collecte tourne toutes les 15 minutes.
 export const REFRESH_MS = 5 * 60 * 1000
 
