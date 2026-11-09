@@ -7,4 +7,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [react(), tailwindcss()],
+  // Version lue dans package.json (fournie par npm lors de `npm run dev` / `npm run build`).
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? 'dev'),
+  },
 })

@@ -7,7 +7,6 @@
 
 Le projet est né d’un constat d’usager : l’application TCL m’indique quand passe mon tram, mais jamais ce que j’économise en CO2 en le prenant plutôt que la voiture. Lyon bas carbone est un projet personnel de Data Engineering et de Data Science. Un pipeline Python, orchestré par GitHub Actions, collecte toutes les 15 minutes l’état des 460 stations Vélo’v, l’historise en Parquet sur Hugging Face et compacte les fichiers chaque nuit. Le code passe par deux environnements : des tests d’intégration sur le vrai flux de données, avec un dataset de staging, puis un smoke test avant chaque mise en production. Ces tests ont déjà révélé deux anomalies réelles dans les données ouvertes. Un site React publié sur GitHub Pages affiche les disponibilités en direct. Les prochaines étapes : un comparateur CO2 des trajets (TCL, vélo, marche, voiture), des transformations dbt + DuckDB, et un modèle qui prédit la disponibilité des stations à une heure. L’ensemble tourne gratuitement, sans aucun serveur.
 
-
 Pour un trajet dans la métropole de Lyon, comparer **transports en commun, Vélo'v, marche et voiture**
 selon le temps, la fiabilité et le CO2 émis. Avec une méthodologie transparente, y compris quand
 le vélo ou la marche font mieux que le tram.
@@ -75,16 +74,20 @@ flowchart LR
 - **Données brutes fidèles à la source.** Les anomalies sont signalées dans les logs et filtrées en
   aval, jamais supprimées à la collecte.
 - **Aucun secret dans le code** : `.env` en local, GitHub Secrets en CI.
+- **Déclenchement externe.** Le cron de GitHub Actions est « best effort » : en novembre 2026, il ne
+  déclenchait que 4 à 5 collectes par jour au lieu de 96. La collecte est donc lancée par
+  cron-job.org via l'API GitHub, et la compaction mesure chaque nuit la couverture de la
+  journée pour détecter tout nouveau trou.
 
 ## CI/CD : deux environnements
 
-| Workflow              | Déclencheur                       | Rôle                                                                                         |
-| --------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| `ci.yml`            | push et PR sur `dev` et `main` | Lint, tests unitaires sans réseau, build du site                                             |
-| `integration.yml`   | push sur `dev`, PR vers `main` | Vrai flux Vélo'v, écriture et relecture sur un dataset de staging, pipeline de bout en bout |
-| `deploy.yml`        | fusion sur `main`                | Smoke test en production, puis déploiement du site                                           |
-| `collect_velov.yml` | toutes les 15 min                  | Collecte + export JSON du site                                                                |
-| `daily.yml`         | chaque nuit                        | Référentiel des stations, compaction, keepalive des crons                                   |
+| Workflow              | Déclencheur                                                       | Rôle                                                                                         |
+| --------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `ci.yml`            | push et PR sur `dev` et `main`                                 | Lint, tests unitaires sans réseau, build du site                                             |
+| `integration.yml`   | push sur `dev`, PR vers `main`                                 | Vrai flux Vélo'v, écriture et relecture sur un dataset de staging, pipeline de bout en bout |
+| `deploy.yml`        | fusion sur `main`                                                | Smoke test en production, puis déploiement du site                                           |
+| `collect_velov.yml` | toutes les 15 min via cron-job.org, cron GitHub horaire en secours | Collecte + export JSON du site                                                                |
+| `daily.yml`         | chaque nuit                                                        | Référentiel des stations, compaction, keepalive des crons                                   |
 
 `main` est protégée par un ruleset : pas de push direct, une Pull Request dont les vérifications
 passent est obligatoire. Les tests d'intégration refusent de s'exécuter si le dataset de staging est
@@ -177,10 +180,13 @@ Les types permettent de lire l'historique d'un coup d'œil et de générer plus 
 ## Feuille de route
 
 - [X] **V0, socle** : collecte, compaction, CI/CD à deux environnements, site des disponibilités
+- [X] **v0.1.1** : collecte fiabilisée (96 collectes par jour) et mesure de la couverture
 - [ ] **V1, comparateur CO2** : GTFS TCL, matrice de trajets, facteurs d'émission ADEME
 - [ ] **V2, pipeline analytique** : dbt + DuckDB, météo, tests de qualité dbt, dashboard
 - [ ] **V3, machine learning** : disponibilité Vélo'v à H+1, comparée à des baselines
 - [ ] **V4, MLOps** : réentraînement planifié, suivi de dérive (Evidently)
+
+Le détail des versions est dans le [journal des modifications](CHANGELOG.md).
 
 ## Données et licences
 

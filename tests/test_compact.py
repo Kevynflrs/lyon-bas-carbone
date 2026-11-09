@@ -76,3 +76,17 @@ def test_compact_day_without_data_does_not_crash(monkeypatch):
     fake_hub(monkeypatch, api)
     assert compact.compact_day(date(2026, 10, 28)) is None
     assert api.commits == []
+
+
+def test_daily_coverage_counts_distinct_snapshots():
+    one_snapshot = parse_station_status(STATUS_V2, pd.Timestamp("2026-10-28T10:00:00Z"))
+    four_snapshots = pd.concat(
+        [
+            parse_station_status(STATUS_V2, pd.Timestamp("2026-10-28T10:00:00Z") + pd.Timedelta(hours=h))
+            for h in range(4)
+        ]
+    )
+    assert compact.daily_coverage(one_snapshot) == 1 / 96
+    assert compact.daily_coverage(four_snapshots) == 4 / 96  # cas réel observé en novembre 2026
+    full_day = pd.DataFrame({"collected_at": pd.date_range("2026-10-28", periods=100, freq="15min")})
+    assert compact.daily_coverage(full_day) == 1.0  # plafonnée à 100 %
