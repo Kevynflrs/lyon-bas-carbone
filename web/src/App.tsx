@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-  import { APP_VERSION, REPO_URL, STALE_AFTER_MS } from './config'
+import { APP_VERSION, REPO_URL, STALE_AFTER_MS } from './config'
+import { EmissionFactors } from './EmissionFactors'
 import { displayName, formatAge, formatNumber, formatTime, normalize, plural } from './format'
 import { StationMap } from './StationMap'
 import { availability, COLORS, type Snapshot, type Station } from './types'
@@ -46,7 +47,10 @@ export default function App() {
           </>
         )}
 
+        
+
         <section aria-labelledby="next-title">
+          <EmissionFactors />
           <h2 id="next-title" className="mb-1.5 font-serif text-[1.3rem] font-medium italic">
             Bientôt : comparer un trajet
           </h2>
@@ -60,7 +64,7 @@ export default function App() {
         <footer className="mt-auto space-y-1.5 border-t border-pierre-fonce pt-5 text-[0.82rem] text-encre-douce">
           <p>
             Données : Métropole de Lyon et JCDecaux (Licence Ouverte 2.0), collectées toutes les 15
-            minutes par un pipeline Python open source.
+            minutes par un pipeline Python open source. Facteurs d'émission : ADEME (Impact CO2).
           </p>
           <p>Projet indépendant, sans lien avec la Métropole de Lyon, SYTRAL Mobilités ou JCDecaux.</p>
           <p>
