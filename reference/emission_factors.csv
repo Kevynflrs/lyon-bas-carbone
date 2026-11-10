@@ -1,0 +1,10 @@
+mode,impactco2_id,impactco2_name,total_g_per_km,usage_g_per_km,construction_g_per_km,hypothese,source,retrieved_on
+voiture_thermique,4,Voiture thermique,142.2534,110.5578,31.6957,"voiture moyenne, conducteur seul","Impact CO2 (ADEME), API v1 /transport ; ADEME, Modélisation de l'empreinte carbone de la voiture (2025)",2026-11-10
+voiture_electrique,5,Voiture électrique,67.3653,12.0884,55.2769,"voiture moyenne, conducteur seul","Impact CO2 (ADEME), API v1 /transport ; ADEME, Modélisation de l'empreinte carbone de la voiture (2025)",2026-11-10
+bus_thermique,9,Bus thermique,122.42,113.5,8.92,moyenne nationale par voyageur,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+bus_electrique,16,Bus électrique,21.7,9.5,12.2,moyenne nationale par voyageur,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+tramway,10,Tramway,4.28,3.8,0.48,moyenne nationale par voyageur,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+metro,11,Métro,4.44,4.2,0.24,moyenne nationale par voyageur,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+velo,7,Vélo mécanique,0.17,0.0,0.17,vélo mécanique personnel,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+velo_electrique,8,Vélo à assistance électrique,10.95,2.23,8.72,vélo à assistance électrique personnel,"Impact CO2 (ADEME), API v1 /transport ; Base Empreinte ADEME",2026-11-10
+marche,30,Marche,0.0,0.0,0.0,aucune émission directe,"Impact CO2 (ADEME), API v1 /transport ; convention Impact CO2 (aucun véhicule)",2026-11-10

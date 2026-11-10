@@ -30,6 +30,14 @@ GTFS_TCL_URL = os.getenv(
     "https://download.data.grandlyon.com/files/rdata/tcl_sytral.tcltheorique/GTFS_TCL.ZIP",
 )
 
+# API Impact CO2 (ADEME).
+IMPACTCO2_API_URL = os.getenv("IMPACTCO2_API_URL", "https://impactco2.fr/api/v1/transport")
+
+
+def impactco2_api_key() -> str | None:
+    return os.getenv("IMPACTCO2_API_KEY") or None
+
+
 USER_AGENT = os.getenv(
     "PIPELINE_USER_AGENT",
     "lyon-bas-carbone/0.1 (projet portfolio open source)",

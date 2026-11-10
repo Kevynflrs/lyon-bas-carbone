@@ -25,6 +25,7 @@ jobs:
       ALLOW_HUB_WRITE_TESTS: "1"
       GRANDLYON_USERNAME: ${{ secrets.GRANDLYON_USERNAME }}
       GRANDLYON_PASSWORD: ${{ secrets.GRANDLYON_PASSWORD }}
+      IMPACTCO2_API_KEY: ${{ secrets.IMPACTCO2_API_KEY }}
     steps:
       - uses: actions/checkout@v5
 

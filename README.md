@@ -130,6 +130,7 @@ python -m pipeline.ingest.velov status --local # collecte réelle dans ./data
 python -m pipeline.export.snapshot --local # JSON du site dans ./data/public
 python -m pipeline.ingest.gtfs # GTFS TCL dans ./data (compte data.grandlyon.com requis)
 python -m pipeline.explore.gtfs # exploration DuckDB du dernier GTFS téléchargé
+python -m pipeline.ingest.emission_factors # facteurs d'émission dans reference/ (clé Impact CO2)
 
 # Site web
 cd web
@@ -149,6 +150,7 @@ pipeline/
   ingest/velov.py -collecte Vélo'v vers Parquet, contrôles de zone
   ingest/compact.py -fusion quotidienne des petits fichiers
   ingest/gtfs.py -téléchargement et contrôle du GTFS TCL (local, non republié)
+  ingest/emission_factors.py -facteurs d'émission Impact CO2 (CSV versionné dans reference/)
   explore/gtfs.py -exploration DuckDB : modes, jours de service, fréquences
   export/snapshot.py -JSON public lu par le site
   storage.py -écriture Hugging Face ou locale
