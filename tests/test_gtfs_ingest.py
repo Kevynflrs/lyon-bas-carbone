@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 import requests
-from gtfs_sample import sample_files, write_zip
+from tests.gtfs_sample import sample_files, write_zip
 
 from pipeline.config import GrandLyonCredentials
 from pipeline.ingest import gtfs

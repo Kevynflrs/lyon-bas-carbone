@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
-from gtfs_sample import sample_files, write_extracted
+from tests.gtfs_sample import sample_files, write_extracted
 
 from pipeline.explore import gtfs as explore
 
