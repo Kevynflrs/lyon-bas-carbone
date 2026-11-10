@@ -66,7 +66,9 @@ class Factor:
     source: str
     retrieved_on: str
 
+
 #  API
+
 
 def fetch(
     include_construction: bool,
@@ -149,6 +151,7 @@ def validate(factors: list[Factor]) -> None:
     if problems:
         raise FactorsError("Facteurs incohérents : " + " ; ".join(problems))
 
+
 #  CSV versionné
 
 COLUMNS = [f.name for f in fields(Factor)]
@@ -195,7 +198,9 @@ def differences(current: list[Factor], reference: list[Factor], tolerance: float
                 found.append(f"{f.mode}.{column} : {old_value} -> {new_value}")
     return found
 
+
 # CLI
+
 
 def run(
     api_key: str | None,

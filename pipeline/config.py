@@ -33,8 +33,10 @@ GTFS_TCL_URL = os.getenv(
 # API Impact CO2 (ADEME).
 IMPACTCO2_API_URL = os.getenv("IMPACTCO2_API_URL", "https://impactco2.fr/api/v1/transport")
 
+
 def impactco2_api_key() -> str | None:
     return os.getenv("IMPACTCO2_API_KEY") or None
+
 
 USER_AGENT = os.getenv(
     "PIPELINE_USER_AGENT",
