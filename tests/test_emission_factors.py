@@ -45,7 +45,9 @@ def factors():
 def by_mode(factors):
     return {f.mode: f for f in factors}
 
+
 # Appel de l'API
+
 
 def test_fetch_sends_bearer_key_and_parameters():
     session = FakeSession()
@@ -81,7 +83,9 @@ def test_run_makes_two_calls():
     assert [c["params"]["includeConstruction"] for c in session.calls] == [1, 0]
     assert len(factors) == len(ef.MODES)
 
+
 # Construction des facteurs
+
 
 def test_values_in_grams_per_km(factors):
     f = by_mode(factors)
@@ -121,7 +125,9 @@ def test_response_without_data():
     with pytest.raises(ef.FactorsError, match="data"):
         ef.parse_response({"error": "oops"})
 
+
 # Contrôles de cohérence
+
 
 def replace(factors, mode, **changes):
     return [dataclasses.replace(f, **changes) if f.mode == mode else f for f in factors]
@@ -151,7 +157,9 @@ def test_validate_rejects_wrong_unit():
     with pytest.raises(ef.FactorsError, match="unité"):
         ef.build_factors(api_response(True, km=1000), api_response(False, km=1000), TODAY)
 
+
 # CSV versionné et dérive
+
 
 def test_csv_roundtrip(factors, tmp_path):
     path = ef.write_csv(factors, tmp_path / "reference" / "emission_factors.csv")
