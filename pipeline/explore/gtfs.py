@@ -1,7 +1,7 @@
 """Exploration du GTFS TCL avec DuckDB : modes, jours de service, fréquences, arrêts les plus desservis.
 
 Usage (après `python -m pipeline.ingest.gtfs`) :
-    python -m pipeline.explore.gtfs                      # dernier GTFS téléchargé, prochain mardi
+    python -m pipeline.explore.gtfs                      # dernier GTFS, jour ouvré représentatif
     python -m pipeline.explore.gtfs --date 2026-11-17    # un jour précis
     python -m pipeline.explore.gtfs --dir chemin/vers/extracted
 
@@ -20,7 +20,7 @@ import duckdb
 import pandas as pd
 
 from pipeline.config import LOCAL_DATA_DIR
-from pipeline.ingest.gtfs import GTFS_PREFIX, ROUTE_TYPES, mode_name
+from pipeline.ingest.gtfs import GTFS_PREFIX, mode_name
 
 TABLES = ("agency", "stops", "routes", "trips", "stop_times", "calendar", "calendar_dates", "feed_info")
 
@@ -46,6 +46,8 @@ EMPTY_TABLES = {
     "calendar_dates": ("service_id", "date", "exception_type"),
 }
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+# Lignes dont l'absence fausserait une comparaison de trajets (ex. métro C fermé jusqu'au 15/11/2026).
+STRUCTURING_MODES = ("metro", "tramway", "funiculaire")
 
 
 def latest_extracted_dir(root: Path = LOCAL_DATA_DIR) -> Path:
@@ -90,7 +92,9 @@ def connect(gtfs_dir: Path) -> duckdb.DuckDBPyConnection:
             + TRY_CAST(split_part(trim(t), ':', 3) AS INTEGER)
         """
     )
-    modes = pd.DataFrame({"route_type": [str(k) for k in ROUTE_TYPES], "mode": list(ROUTE_TYPES.values())})
+    # Famille de chaque route_type présent (types de base et étendus, ex. 713 -> bus).
+    codes = [row[0] for row in con.execute("SELECT DISTINCT trim(route_type) FROM routes").fetchall()]
+    modes = pd.DataFrame({"route_type": codes, "mode": [mode_name(code or "") for code in codes]})
     con.register("route_modes_df", modes)
     con.execute("CREATE TABLE route_modes AS SELECT * FROM route_modes_df")
     con.unregister("route_modes_df")
@@ -124,12 +128,45 @@ def trips_on(con: duckdb.DuckDBPyConnection, day: dt.date) -> int:
     return con.execute(query, params).fetchone()[0]
 
 
-def reference_day(con: duckdb.DuckDBPyConnection, start: dt.date, horizon_days: int = 60) -> dt.date:
-    """Premier mardi (jour ouvré « type ») avec des courses, sinon premier jour avec des courses."""
+def lines_on(
+    con: duckdb.DuckDBPyConnection, day: dt.date, modes: tuple[str, ...] = STRUCTURING_MODES
+) -> pd.DataFrame:
+    """Nombre de courses de chaque ligne des modes donnés ce jour-là, lignes à l'arrêt comprises (0)."""
+    services, params = active_services_sql(day)
+    mode_list = ", ".join(f"'{m}'" for m in modes)  # valeurs internes, pas de saisie utilisateur
+    query = f"""
+        WITH active AS (
+            SELECT route_id, count(*) AS courses FROM trips
+            WHERE service_id IN ({services}) GROUP BY route_id
+        )
+        SELECT r.route_short_name AS ligne, m.mode, coalesce(a.courses, 0) AS courses
+        FROM routes r
+        JOIN route_modes m ON m.route_type = trim(r.route_type)
+        LEFT JOIN active a USING (route_id)
+        WHERE m.mode IN ({mode_list})
+        ORDER BY m.mode, ligne
+    """
+    return con.execute(query, params).df()
+
+
+def reference_day(con: duckdb.DuckDBPyConnection, start: dt.date, horizon_days: int = 28) -> dt.date:
+    """Jour ouvré représentatif : le mardi ou jeudi où le plus de lignes structurantes circulent.
+
+    Départage par le nombre total de courses, puis par la date la plus proche. Un « premier mardi »
+    ne suffit pas : le 10/11/2026, le métro C était fermé et aurait faussé la matrice de trajets.
+    Si aucun mardi ni jeudi n'a de course, renvoie le premier jour qui en a.
+    """
     days = [start + dt.timedelta(days=i) for i in range(horizon_days)]
-    for day in days:
-        if day.weekday() == 1 and trips_on(con, day) > 0:
-            return day
+    best: tuple[tuple[int, int], dt.date] | None = None
+    for day in (d for d in days if d.weekday() in (1, 3)):
+        trips = trips_on(con, day)
+        if trips == 0:
+            continue
+        score = (int((lines_on(con, day)["courses"] > 0).sum()), trips)
+        if best is None or score > best[0]:
+            best = (score, day)
+    if best is not None:
+        return best[1]
     for day in days:
         if trips_on(con, day) > 0:
             return day
@@ -246,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
     con = connect(gtfs_dir)
     today = dt.date.today()
     day = args.date or reference_day(con, today)
+    stopped_today = lines_on(con, today).query("courses == 0")
 
     pd.set_option("display.width", 140)
     pd.set_option("display.max_rows", 200)
@@ -253,11 +291,12 @@ def main(argv: list[str] | None = None) -> int:
         (f"GTFS lu dans {gtfs_dir}", overview(con)),
         ("Lignes par mode", routes_by_mode(con)),
         ("Courses par jour (14 prochains jours)", trips_per_day(con, today)),
-        (f"Intervalle moyen entre deux départs, 7 h - 9 h, le {day}", headways(con, day)),
+        (f"Lignes de métro, tramway et funiculaire sans aucune course le {today}", stopped_today),
+        (f"Intervalle moyen entre deux départs, 7 h - 9 h, le {day} (jour de référence)", headways(con, day)),
         (f"Stations les plus desservies le {day}", busiest_stops(con, day)),
     ]
     for title, df in sections:
-        print(f"\n=== {title}\n{df.to_string(index=False)}")
+        print(f"\n=== {title}\n{'(aucune)' if df.empty else df.to_string(index=False)}")
     return 0
 
 

@@ -1,304 +1,196 @@
-"""Exploration du GTFS TCL avec DuckDB : modes, jours de service, fréquences, arrêts les plus desservis.
+"""Parsing GBFS indépendant de la version (2.x et 3.0).
 
-Usage (après `python -m pipeline.ingest.gtfs`) :
-    python -m pipeline.explore.gtfs                      # dernier GTFS, jour ouvré représentatif
-    python -m pipeline.explore.gtfs --date 2026-11-17    # un jour précis
-    python -m pipeline.explore.gtfs --dir chemin/vers/extracted
+Le flux Vélo'v est publié en GBFS 2.3 et 3.0. Les différences qui nous concernent :
+- découverte des flux : `data.<langue>.feeds` (2.x) vs `data.feeds` (3.0) ;
+- vélos disponibles : `num_bikes_available` (2.x) vs `num_vehicles_available` (3.0) ;
+- horodatage : secondes POSIX (2.x) vs texte ISO 8601 (3.0) ;
+- nom de station : texte (2.x) vs liste de traductions (3.0).
 
-DuckDB lit directement les fichiers .txt (CSV) extraits ; tout est lu en texte (all_varchar)
-pour ne pas perdre les zéros en tête des identifiants.
+Ces fonctions sont pures (aucun appel réseau) pour être testables facilement.
 """
 
 from __future__ import annotations
 
-import argparse
-import datetime as dt
-import sys
-from pathlib import Path
+import json
+from datetime import datetime
+from typing import Any
 
-import duckdb
 import pandas as pd
 
-from pipeline.config import LOCAL_DATA_DIR
-from pipeline.ingest.gtfs import GTFS_PREFIX, mode_name
+STATUS_COLUMNS = [
+    "collected_at",
+    "last_reported",
+    "station_id",
+    "num_bikes_available",
+    "num_docks_available",
+    "is_installed",
+    "is_renting",
+    "is_returning",
+    "vehicle_types_available",
+    "gbfs_version",
+]
 
-TABLES = ("agency", "stops", "routes", "trips", "stop_times", "calendar", "calendar_dates", "feed_info")
-
-# Colonnes facultatives dans la norme : ajoutées à NULL si absentes, pour garder des requêtes simples.
-OPTIONAL_COLUMNS = {
-    "stops": ("location_type", "parent_station"),
-    "routes": ("route_short_name", "route_long_name"),
-    "trips": ("direction_id", "trip_headsign"),
-}
-EMPTY_TABLES = {
-    "calendar": (
-        "service_id",
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
-        "start_date",
-        "end_date",
-    ),
-    "calendar_dates": ("service_id", "date", "exception_type"),
-}
-WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
-# Lignes dont l'absence fausserait une comparaison de trajets (ex. métro C fermé jusqu'au 15/11/2026).
-STRUCTURING_MODES = ("metro", "tramway", "funiculaire")
+INFORMATION_COLUMNS = [
+    "collected_at",
+    "station_id",
+    "name",
+    "lat",
+    "lon",
+    "capacity",
+    "address",
+    "gbfs_version",
+]
 
 
-def latest_extracted_dir(root: Path = LOCAL_DATA_DIR) -> Path:
-    candidates = sorted((root / GTFS_PREFIX).glob("date=*/extracted"))
-    if not candidates:
-        raise FileNotFoundError(
-            f"Aucun GTFS extrait sous {root / GTFS_PREFIX} : lance d'abord python -m pipeline.ingest.gtfs"
+class GBFSError(ValueError):
+    """Flux GBFS absent, vide ou mal formé."""
+
+
+def feed_version(doc: dict[str, Any]) -> str:
+    return str(doc.get("version", "unknown"))
+
+
+def discover_feeds(gbfs_doc: dict[str, Any], preferred_lang: str = "fr") -> dict[str, str]:
+    """Renvoie {nom_du_flux: url} à partir du document gbfs.json."""
+    data = gbfs_doc.get("data") or {}
+    feeds = data.get("feeds")  # GBFS 3.0
+    if feeds is None:  # GBFS 2.x : un bloc par langue
+        if not data:
+            raise GBFSError("gbfs.json ne contient aucun flux")
+        lang_block = data.get(preferred_lang) or next(iter(data.values()))
+        feeds = lang_block.get("feeds", [])
+    urls = {f["name"]: f["url"] for f in feeds if "name" in f and "url" in f}
+    if not urls:
+        raise GBFSError("gbfs.json ne contient aucun flux exploitable")
+    return urls
+
+
+def _to_utc(value: Any) -> pd.Timestamp | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return pd.Timestamp(int(value), unit="s", tz="UTC")
+    return pd.Timestamp(datetime.fromisoformat(str(value).replace("Z", "+00:00"))).tz_convert("UTC")
+
+
+def _to_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes"}
+    return bool(value)
+
+
+def _localized_text(value: Any, preferred_lang: str = "fr") -> str | None:
+    """GBFS 3.0 : liste [{text, language}] ; GBFS 2.x : simple texte."""
+    if value is None or isinstance(value, str):
+        return value
+    if isinstance(value, list) and value:
+        for item in value:
+            if item.get("language", "").startswith(preferred_lang):
+                return item.get("text")
+        return value[0].get("text")
+    return str(value)
+
+
+def _stations(doc: dict[str, Any], feed_name: str) -> list[dict[str, Any]]:
+    stations = (doc.get("data") or {}).get("stations")
+    if not stations:
+        raise GBFSError(f"{feed_name} : aucune station dans le flux")
+    return stations
+
+
+def parse_station_status(doc: dict[str, Any], collected_at: pd.Timestamp) -> pd.DataFrame:
+    version = feed_version(doc)
+    rows = []
+    for s in _stations(doc, "station_status"):
+        bikes = s.get("num_vehicles_available", s.get("num_bikes_available"))
+        vehicle_types = s.get("vehicle_types_available")
+        rows.append(
+            {
+                "collected_at": collected_at,
+                "last_reported": _to_utc(s.get("last_reported")),
+                "station_id": str(s["station_id"]),
+                "num_bikes_available": bikes,
+                "num_docks_available": s.get("num_docks_available"),
+                "is_installed": _to_bool(s.get("is_installed")),
+                "is_renting": _to_bool(s.get("is_renting")),
+                "is_returning": _to_bool(s.get("is_returning")),
+                # Conservé brut (JSON) : utile plus tard pour séparer vélos mécaniques / électriques.
+                "vehicle_types_available": json.dumps(vehicle_types) if vehicle_types else None,
+                "gbfs_version": version,
+            }
         )
-    return candidates[-1]
-
-
-def _sql_path(path: Path) -> str:
-    return path.resolve().as_posix().replace("'", "''")
-
-
-def connect(gtfs_dir: Path) -> duckdb.DuckDBPyConnection:
-    """Connexion en mémoire avec une vue par fichier GTFS et quelques macros utiles."""
-    con = duckdb.connect()
-    for table in TABLES:
-        path = gtfs_dir / f"{table}.txt"
-        if path.exists():
-            # hive_partitioning = false : sinon DuckDB lit « date=AAAA-MM-JJ » dans le chemin et
-            # ajoute une colonne `date` qui écrase celle de calendar_dates.txt.
-            con.execute(
-                f"CREATE VIEW raw_{table} AS SELECT * FROM read_csv('{_sql_path(path)}', "
-                "header = true, all_varchar = true, encoding = 'utf-8', hive_partitioning = false)"
-            )
-            columns = {row[0] for row in con.execute(f"DESCRIBE raw_{table}").fetchall()}
-            extra = [c for c in OPTIONAL_COLUMNS.get(table, ()) if c not in columns]
-            select = ", ".join(["*", *(f"NULL::VARCHAR AS {c}" for c in extra)])
-            con.execute(f"CREATE VIEW {table} AS SELECT {select} FROM raw_{table}")
-        elif table in EMPTY_TABLES:
-            cols = ", ".join(f"NULL::VARCHAR AS {c}" for c in EMPTY_TABLES[table])
-            con.execute(f"CREATE VIEW {table} AS SELECT {cols} WHERE false")
-
-    # Les heures GTFS peuvent dépasser 24:00:00 (services après minuit) : on compte en secondes.
-    con.execute(
-        """
-        CREATE MACRO gtfs_seconds(t) AS
-            TRY_CAST(split_part(trim(t), ':', 1) AS INTEGER) * 3600
-            + TRY_CAST(split_part(trim(t), ':', 2) AS INTEGER) * 60
-            + TRY_CAST(split_part(trim(t), ':', 3) AS INTEGER)
-        """
+    df = pd.DataFrame(rows, columns=STATUS_COLUMNS)
+    return df.astype(
+        {
+            "station_id": "string",
+            "num_bikes_available": "Int16",
+            "num_docks_available": "Int16",
+            "is_installed": "boolean",
+            "is_renting": "boolean",
+            "is_returning": "boolean",
+            "vehicle_types_available": "string",
+            "gbfs_version": "string",
+        }
     )
-    # Famille de chaque route_type présent (types de base et étendus, ex. 713 -> bus).
-    codes = [row[0] for row in con.execute("SELECT DISTINCT trim(route_type) FROM routes").fetchall()]
-    modes = pd.DataFrame({"route_type": codes, "mode": [mode_name(code or "") for code in codes]})
-    con.register("route_modes_df", modes)
-    con.execute("CREATE TABLE route_modes AS SELECT * FROM route_modes_df")
-    con.unregister("route_modes_df")
-    return con
 
 
-def active_services_sql(day: dt.date) -> tuple[str, list[str]]:
-    """Requête des service_id actifs un jour donné (calendrier + exceptions de calendar_dates)."""
-    weekday = WEEKDAYS[day.weekday()]  # issu d'une liste fixe : pas d'injection possible
-    ymd = day.strftime("%Y%m%d")
-    sql = f"""
-        WITH base AS (
-            SELECT service_id FROM calendar
-            WHERE trim({weekday}) = '1' AND trim(start_date) <= ? AND trim(end_date) >= ?
-        ),
-        added AS (
-            SELECT service_id FROM calendar_dates WHERE trim(date) = ? AND trim(exception_type) = '1'
-        ),
-        removed AS (
-            SELECT service_id FROM calendar_dates WHERE trim(date) = ? AND trim(exception_type) = '2'
-        ),
-        candidates AS (SELECT service_id FROM base UNION SELECT service_id FROM added)
-        SELECT service_id FROM candidates WHERE service_id NOT IN (SELECT service_id FROM removed)
-    """
-    return sql, [ymd, ymd, ymd, ymd]
-
-
-def trips_on(con: duckdb.DuckDBPyConnection, day: dt.date) -> int:
-    services, params = active_services_sql(day)
-    query = f"SELECT count(*) FROM trips WHERE service_id IN ({services})"
-    return con.execute(query, params).fetchone()[0]
-
-
-def lines_on(
-    con: duckdb.DuckDBPyConnection, day: dt.date, modes: tuple[str, ...] = STRUCTURING_MODES
-) -> pd.DataFrame:
-    """Nombre de courses de chaque ligne des modes donnés ce jour-là, lignes à l'arrêt comprises (0)."""
-    services, params = active_services_sql(day)
-    mode_list = ", ".join(f"'{m}'" for m in modes)  # valeurs internes, pas de saisie utilisateur
-    query = f"""
-        WITH active AS (
-            SELECT route_id, count(*) AS courses FROM trips
-            WHERE service_id IN ({services}) GROUP BY route_id
-        )
-        SELECT r.route_short_name AS ligne, m.mode, coalesce(a.courses, 0) AS courses
-        FROM routes r
-        JOIN route_modes m ON m.route_type = trim(r.route_type)
-        LEFT JOIN active a USING (route_id)
-        WHERE m.mode IN ({mode_list})
-        ORDER BY m.mode, ligne
-    """
-    return con.execute(query, params).df()
-
-
-def reference_day(con: duckdb.DuckDBPyConnection, start: dt.date, horizon_days: int = 28) -> dt.date:
-    """Jour ouvré représentatif : le mardi ou jeudi où le plus de lignes structurantes circulent.
-
-    Départage par le nombre total de courses, puis par la date la plus proche. Un « premier mardi »
-    ne suffit pas : le 10/11/2026, le métro C était fermé et aurait faussé la matrice de trajets.
-    Si aucun mardi ni jeudi n'a de course, renvoie le premier jour qui en a.
-    """
-    days = [start + dt.timedelta(days=i) for i in range(horizon_days)]
-    best: tuple[tuple[int, int], dt.date] | None = None
-    for day in (d for d in days if d.weekday() in (1, 3)):
-        trips = trips_on(con, day)
-        if trips == 0:
-            continue
-        score = (int((lines_on(con, day)["courses"] > 0).sum()), trips)
-        if best is None or score > best[0]:
-            best = (score, day)
-    if best is not None:
-        return best[1]
-    for day in days:
-        if trips_on(con, day) > 0:
-            return day
-    raise ValueError(f"Aucune course entre le {days[0]} et le {days[-1]}")
-
-
-def overview(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    return con.execute(
-        """
-        SELECT 'arrêts (location_type 0)' AS element,
-               count(*) FILTER (WHERE coalesce(nullif(trim(location_type), ''), '0') = '0') AS nombre
-        FROM stops
-        UNION ALL SELECT 'stations (location_type 1)', count(*) FILTER (WHERE trim(location_type) = '1')
-        FROM stops
-        UNION ALL SELECT 'lignes', count(*) FROM routes
-        UNION ALL SELECT 'courses', count(*) FROM trips
-        UNION ALL SELECT 'horaires (stop_times)', count(*) FROM stop_times
-        """
-    ).df()
-
-
-def routes_by_mode(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    df = con.execute(
-        """
-        SELECT trim(route_type) AS route_type, count(*) AS lignes,
-               string_agg(route_short_name, ', ' ORDER BY route_short_name) AS exemples
-        FROM routes GROUP BY 1 ORDER BY lignes DESC
-        """
-    ).df()
-    df.insert(0, "mode", df["route_type"].map(mode_name))
-    df["exemples"] = df["exemples"].fillna("").str.slice(0, 80)
+def parse_station_information(doc: dict[str, Any], collected_at: pd.Timestamp) -> pd.DataFrame:
+    version = feed_version(doc)
+    rows = [
+        {
+            "collected_at": collected_at,
+            "station_id": str(s["station_id"]),
+            "name": _localized_text(s.get("name")),
+            "lat": s.get("lat"),
+            "lon": s.get("lon"),
+            "capacity": s.get("capacity"),
+            "address": _localized_text(s.get("address")),
+            "gbfs_version": version,
+        }
+        for s in _stations(doc, "station_information")
+    ]
+    df = pd.DataFrame(rows, columns=INFORMATION_COLUMNS).astype(
+        {
+            "station_id": "string",
+            "name": "string",
+            "lat": "float64",
+            "lon": "float64",
+            "capacity": "Int16",
+            "address": "string",
+            "gbfs_version": "string",
+        }
+    )
+    # Certains producteurs mettent (0, 0) quand la position est inconnue (« Null Island »,
+    # dans le golfe de Guinée) : on stocke une valeur manquante plutôt qu'un faux point.
+    unknown_position = (df["lat"] == 0) | (df["lon"] == 0)
+    df.loc[unknown_position, ["lat", "lon"]] = float("nan")
     return df
 
 
-def trips_per_day(con: duckdb.DuckDBPyConnection, start: dt.date, days: int = 14) -> pd.DataFrame:
-    rows = []
-    for i in range(days):
-        day = start + dt.timedelta(days=i)
-        rows.append(
-            {
-                "jour": day.isoformat(),
-                "jour_semaine": WEEKDAYS[day.weekday()],
-                "courses": trips_on(con, day),
-            }
-        )
-    return pd.DataFrame(rows)
+def quality_warnings(status: pd.DataFrame) -> list[str]:
+    """Contrôles légers : on alerte sans bloquer la collecte."""
+    warnings = []
+    duplicated = int(status["station_id"].duplicated().sum())
+    if duplicated:
+        warnings.append(f"{duplicated} station_id en double")
+    negative = int(((status["num_bikes_available"] < 0) | (status["num_docks_available"] < 0)).sum())
+    if negative:
+        warnings.append(f"{negative} stations avec un compteur négatif")
+    missing = int(status["num_bikes_available"].isna().sum())
+    if missing:
+        warnings.append(f"{missing} stations sans nombre de vélos")
+    return warnings
 
 
-def headways(
-    con: duckdb.DuckDBPyConnection,
-    day: dt.date,
-    start: str = "07:00:00",
-    end: str = "09:00:00",
-    modes: tuple[str, ...] = ("metro", "tramway", "funiculaire"),
-) -> pd.DataFrame:
-    """Intervalle moyen entre deux départs du terminus, par ligne et par sens, sur une plage horaire."""
-    services, params = active_services_sql(day)
-    mode_list = ", ".join(f"'{m}'" for m in modes)  # valeurs internes, pas de saisie utilisateur
-    query = f"""
-        WITH active_trips AS (
-            SELECT trip_id, route_id, coalesce(nullif(trim(direction_id), ''), '?') AS sens
-            FROM trips WHERE service_id IN ({services})
-        ),
-        first_departure AS (
-            SELECT st.trip_id,
-                   arg_min(gtfs_seconds(st.departure_time), TRY_CAST(st.stop_sequence AS INTEGER)) AS depart_s
-            FROM stop_times st JOIN active_trips USING (trip_id)
-            WHERE nullif(trim(st.departure_time), '') IS NOT NULL
-            GROUP BY st.trip_id
-        )
-        SELECT r.route_short_name AS ligne, m.mode, a.sens, count(*) AS departs,
-               round((gtfs_seconds(?) - gtfs_seconds(?)) / 60.0 / count(*), 1) AS intervalle_moyen_min
-        FROM first_departure f
-        JOIN active_trips a USING (trip_id)
-        JOIN routes r USING (route_id)
-        LEFT JOIN route_modes m ON m.route_type = trim(r.route_type)
-        WHERE f.depart_s >= gtfs_seconds(?) AND f.depart_s < gtfs_seconds(?) AND m.mode IN ({mode_list})
-        GROUP BY ALL
-        ORDER BY m.mode, ligne, a.sens
-    """
-    return con.execute(query, [*params, end, start, start, end]).df()
-
-
-def busiest_stops(con: duckdb.DuckDBPyConnection, day: dt.date, limit: int = 15) -> pd.DataFrame:
-    """Arrêts (regroupés par station) avec le plus de passages sur la journée."""
-    services, params = active_services_sql(day)
-    query = f"""
-        WITH active_trips AS (SELECT trip_id FROM trips WHERE service_id IN ({services})),
-        passages AS (
-            SELECT coalesce(nullif(trim(s.parent_station), ''), s.stop_id) AS station_id
-            FROM stop_times st
-            JOIN active_trips USING (trip_id)
-            JOIN stops s ON s.stop_id = st.stop_id
-        )
-        SELECT p.station_id, any_value(s.stop_name) AS nom, count(*) AS passages
-        FROM passages p
-        LEFT JOIN stops s ON s.stop_id = p.station_id
-        GROUP BY p.station_id
-        ORDER BY passages DESC, p.station_id
-        LIMIT {int(limit)}
-    """
-    return con.execute(query, params).df()
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("--dir", type=Path, help="dossier des .txt extraits (défaut : dernier téléchargé)")
-    parser.add_argument("--date", type=dt.date.fromisoformat, help="jour analysé (AAAA-MM-JJ)")
-    args = parser.parse_args(argv)
-
-    gtfs_dir = args.dir or latest_extracted_dir()
-    con = connect(gtfs_dir)
-    today = dt.date.today()
-    day = args.date or reference_day(con, today)
-    stopped_today = lines_on(con, today).query("courses == 0")
-
-    pd.set_option("display.width", 140)
-    pd.set_option("display.max_rows", 200)
-    sections = [
-        (f"GTFS lu dans {gtfs_dir}", overview(con)),
-        ("Lignes par mode", routes_by_mode(con)),
-        ("Courses par jour (14 prochains jours)", trips_per_day(con, today)),
-        (f"Lignes de métro, tramway et funiculaire sans aucune course le {today}", stopped_today),
-        (f"Intervalle moyen entre deux départs, 7 h - 9 h, le {day} (jour de référence)", headways(con, day)),
-        (f"Stations les plus desservies le {day}", busiest_stops(con, day)),
-    ]
-    for title, df in sections:
-        print(f"\n=== {title}\n{'(aucune)' if df.empty else df.to_string(index=False)}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+def information_quality_warnings(information: pd.DataFrame) -> list[str]:
+    """Contrôles légers du référentiel des stations."""
+    warnings = []
+    duplicated = int(information["station_id"].duplicated().sum())
+    if duplicated:
+        warnings.append(f"{duplicated} station_id en double")
+    no_position = information.loc[information["lat"].isna() | information["lon"].isna(), "station_id"]
+    if len(no_position):
+        warnings.append(f"{len(no_position)} stations sans coordonnées : {', '.join(no_position.head(10))}")
+    return warnings
