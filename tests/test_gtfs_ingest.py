@@ -15,10 +15,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 import requests
-from tests.gtfs_sample import sample_files, write_zip
 
 from pipeline.config import GrandLyonCredentials
 from pipeline.ingest import gtfs
+from tests.gtfs_sample import sample_files, write_zip
 
 GOOD = GrandLyonCredentials("kevyn", "s3cret")
 BAD = GrandLyonCredentials("kevyn", "mauvais")

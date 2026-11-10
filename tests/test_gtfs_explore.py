@@ -5,9 +5,9 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
-from tests.gtfs_sample import sample_files, write_extracted
 
 from pipeline.explore import gtfs as explore
+from tests.gtfs_sample import sample_files, write_extracted
 
 TUESDAY = dt.date(2026, 11, 10)
 HOLIDAY = dt.date(2026, 11, 11)  # mercredi 11 novembre : services de semaine retirés
