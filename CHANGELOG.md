@@ -1,8 +1,20 @@
-
 # Journal des modifications
 
 Les changements notables de ce projet sont consignés ici. Le format suit
 [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet utilise le [versionnement sémantique](https://semver.org/lang/fr/).
+
+## [0.2.0][0.2.0] - 2026-11-10
+
+### Ajouté
+
+- **GTFS TCL** : téléchargement des horaires théoriques du réseau TCL depuis data.grandlyon.com
+  (authentification HTTP Basic, Licence Mobilités), écriture atomique, extraction sécurisée et
+  manifeste (empreinte SHA-256, période de validité, comptages par mode, alertes qualité).
+  Le fichier reste en local et n'est pas republié.
+- **Exploration DuckDB du GTFS** : lignes par mode, courses par jour (jours fériés compris),
+  intervalle moyen entre deux départs en heure de pointe, stations les plus desservies.
+- Test d'intégration sur le vrai GTFS (validité en cours, présence du métro, du tramway, du
+  funiculaire et des bus, fréquence du métro en pointe).
 
 ## [0.1.1][0.1.1] - 2026-11-09
 
@@ -33,5 +45,6 @@ Première version publique.
 - CI/CD : tests unitaires, tests d'intégration sur staging, smoke test et déploiement sur `main`.
 - Licence MIT, conventions de branches et de commits.
 
+[0.2.0]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Kevynflrs/lyon-bas-carbone/releases/tag/v0.1.0

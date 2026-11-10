@@ -23,16 +23,17 @@ qualité, CI/CD à deux environnements, site web statique. **100 % gratuit, aucu
 
 ## Où en est le projet
 
-| Brique                                                                            | État         |
-| --------------------------------------------------------------------------------- | ------------- |
-| Collecte Vélo'v toutes les 15 min, historisée en Parquet                        | en production |
-| Compaction quotidienne des fichiers                                               | en production |
-| Site web : disponibilités en direct, recherche de station                        | en ligne      |
-| CI/CD : tests d'intégration sur `dev`, smoke test et déploiement sur `main` | ok            |
-| Comparateur de trajets (temps, CO2)                                               | V1, en cours  |
-| Transformations dbt + DuckDB                                                      | V2            |
-| Prédiction de disponibilité à H+1                                              | V3            |
-| Réentraînement planifié, suivi de dérive                                      | V4            |
+| Brique                                                                                  | État         |
+| --------------------------------------------------------------------------------------- | ------------- |
+| Collecte Vélo'v toutes les 15 min, historisée en Parquet                              | en production |
+| Compaction quotidienne des fichiers                                                     | en production |
+| Site web : disponibilités en direct, recherche de station                              | en ligne      |
+| <br />CI/CD : tests d'intégration sur `dev`, smoke test et déploiement sur `main` | ok            |
+| Téléchargement et contrôle du GTFS TCL, exploration DuckDB                           | ok            |
+| Comparateur de trajets (temps, CO2)                                                     | V1, en cours  |
+| Transformations dbt + DuckDB                                                            | V2            |
+| Prédiction de disponibilité à H+1                                                    | V3            |
+| Réentraînement planifié, suivi de dérive                                            | V4            |
 
 ## Architecture
 
@@ -122,6 +123,8 @@ pytest -q  # tests unitaires, sans réseau
 pytest -m integration # tests sur le vrai flux Vélo'v
 python -m pipeline.ingest.velov status --local # collecte réelle dans ./data
 python -m pipeline.export.snapshot --local # JSON du site dans ./data/public
+python -m pipeline.ingest.gtfs # GTFS TCL dans ./data (compte data.grandlyon.com requis)
+python -m pipeline.explore.gtfs # exploration DuckDB du dernier GTFS téléchargé
 
 # Site web
 cd web
@@ -131,6 +134,8 @@ npm run dev # http://localhost:5173
 
 Pour écrire sur Hugging Face, copier `.env.example` en `.env` et renseigner `HF_TOKEN` et `HF_DATASET_REPO`.
 
+Pour le GTFS TCL, renseigner aussi `GRANDLYON_USERNAME` et `GRANDLYON_PASSWORD` (identifiants des services de données data.grandlyon.com).
+
 ## Organisation du code
 
 ```
@@ -138,6 +143,8 @@ pipeline/
   ingest/gbfs.py -parsing GBFS 2.x et 3.0 (fonctions pures)
   ingest/velov.py -collecte Vélo'v vers Parquet, contrôles de zone
   ingest/compact.py -fusion quotidienne des petits fichiers
+  ingest/gtfs.py -téléchargement et contrôle du GTFS TCL (local, non republié)
+  explore/gtfs.py -exploration DuckDB : modes, jours de service, fréquences
   export/snapshot.py -JSON public lu par le site
   storage.py -écriture Hugging Face ou locale
 tests/ -tests unitaires (sans réseau)
@@ -199,3 +206,8 @@ Le détail des versions est dans le [journal des modifications](CHANGELOG.md).
 
 Le code est distribué sous licence [MIT](LICENSE). Les données restent soumises à leurs licences
 respectives, indiquées dans le tableau ci-dessus.
+
+
+Le GTFS TCL n'est pas republié : chaque exécution le télécharge avec un compte data.grandlyon.com et
+   le garde en local. Seuls des résultats calculés (temps de trajet, CO2) seront publiés, avec la mention
+   prévue par la Licence Mobilités.
