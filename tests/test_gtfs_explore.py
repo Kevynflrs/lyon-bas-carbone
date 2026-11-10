@@ -84,6 +84,43 @@ def test_busiest_stops_group_platforms_by_station(con):
     assert top["passages"] == 16
 
 
+def with_closed_metro_c(files: dict[str, str]) -> dict[str, str]:
+    """Ajoute un métro C qui ne circule qu'à partir du lundi 16/11 (cas réel de novembre 2026)."""
+    files = dict(files)
+    files["routes.txt"] += "C,C,Hôtel de Ville - Cuire,1\nJD300,JD300,Ligne scolaire 300,713\n"
+    files["trips.txt"] += "C,C_LATER,C_0,0\nJD300,WEEK,JD_0,0\n"
+    files["stop_times.txt"] += (
+        "C_0,07:30:00,07:30:00,1001,1\nC_0,07:35:00,07:35:00,2001,2\n"
+        "JD_0,07:40:00,07:40:00,2001,1\nJD_0,07:50:00,07:50:00,3001,2\n"
+    )
+    files["calendar.txt"] += "C_LATER,1,1,1,1,1,0,0,20261116,20261231\n"
+    return files
+
+
+@pytest.fixture
+def con_closure(tmp_path):
+    connection = explore.connect(write_extracted(tmp_path / "extracted", with_closed_metro_c(sample_files())))
+    yield connection
+    connection.close()
+
+
+def test_lines_on_shows_stopped_structuring_lines(con_closure):
+    lines = explore.lines_on(con_closure, TUESDAY).set_index("ligne")
+    assert lines.loc["C", "courses"] == 0
+    assert lines.loc["A", "courses"] == 13
+    assert "JD300" not in lines.index  # bus scolaire : pas une ligne structurante
+
+
+def test_reference_day_avoids_a_closed_metro_line(con_closure):
+    # Le mardi 10/11, le métro C est fermé : le jour représentatif est le mardi 17/11.
+    assert explore.reference_day(con_closure, dt.date(2026, 11, 7)) == dt.date(2026, 11, 17)
+
+
+def test_extended_route_types_join_their_family(con_closure):
+    buses = explore.headways(con_closure, TUESDAY, modes=("bus",))
+    assert buses["ligne"].tolist() == ["JD300"]  # route_type 713 classé dans la famille bus
+
+
 def test_works_without_calendar_txt(tmp_path):
     files = sample_files()
     del files["calendar.txt"]

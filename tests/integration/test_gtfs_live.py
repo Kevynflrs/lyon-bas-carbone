@@ -62,6 +62,10 @@ def test_live_gtfs_explorable_with_duckdb(folder):
     peak = explore.headways(con, day)
     metro = peak[peak["mode"] == "metro"]
     assert not metro.empty, "Aucun départ de métro entre 7 h et 9 h un jour ouvré"
+
+    # Le jour de référence doit voir circuler les quatre lignes de métro (cf. métro C fermé en 11/2026).
+    assert {"A", "B", "C", "D"} <= set(metro["ligne"]), f"Lignes de métro le {day} : {sorted(metro['ligne'])}"
+
     # Un métro lyonnais passe bien plus souvent qu'une fois par quart d'heure en pointe.
     assert metro["intervalle_moyen_min"].median() < 15
     con.close()

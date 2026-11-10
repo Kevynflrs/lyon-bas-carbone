@@ -41,6 +41,7 @@ from pipeline.config import (
     grandlyon_credentials,
 )
 from pipeline.http import build_session
+from pipeline.ingest.velov import LYON_BBOX
 
 log = logging.getLogger("gtfs")
 
@@ -56,7 +57,7 @@ SOURCE = {
 REQUIRED_FILES = ("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt")
 CALENDAR_FILES = ("calendar.txt", "calendar_dates.txt")  # au moins l'un des deux
 
-# Types de lignes GTFS (route_type), y compris quelques types étendus courants.
+# Types de lignes GTFS de base (route_type 0 à 12).
 ROUTE_TYPES = {
     0: "tramway",
     1: "metro",
@@ -68,15 +69,27 @@ ROUTE_TYPES = {
     7: "funiculaire",
     11: "trolleybus",
     12: "monorail",
-    700: "bus",
-    800: "trolleybus",
-    900: "tramway",
-    1400: "funiculaire",
 }
+# Types étendus (« Extended GTFS Route Types ») : classés par famille, le code exact reste dans le
+# manifeste. Le GTFS TCL en utilise plusieurs : 702 bus express, 705 bus de nuit, 711 navette,
+# 713 bus scolaire, 714 bus de substitution.
+EXTENDED_FAMILIES = (
+    (100, 199, "train"),
+    (200, 299, "car"),
+    (400, 499, "metro"),
+    (700, 799, "bus"),
+    (800, 899, "trolleybus"),
+    (900, 999, "tramway"),
+    (1000, 1099, "ferry"),
+    (1200, 1299, "ferry"),
+    (1300, 1399, "telepherique"),
+    (1400, 1499, "funiculaire"),
+)
 EXPECTED_MODES = ("metro", "tramway", "funiculaire", "bus")
 
-# Emprise large des réseaux SYTRAL (bien plus large que la métropole) : (lat_min, lat_max, lon_min, lon_max).
-GTFS_BBOX = (45.40, 46.15, 4.30, 5.35)
+# Emprise du réseau SYTRAL Mobilités : tout le Rhône, plus des communes limitrophes desservies par
+# les lignes scolaires (ex. Charlieu et Le Coteau, dans la Loire). (lat_min, lat_max, lon_min, lon_max)
+GTFS_BBOX = (45.20, 46.45, 3.90, 5.45)
 EXPIRY_WARNING_DAYS = 7
 MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024  # garde-fou : le GTFS TCL fait quelques dizaines de Mo
 
@@ -94,7 +107,7 @@ class DownloadResult:
     etag: str | None
 
 
-# --- Téléchargement -----------------------------------------------------------------------------
+# Téléchargement
 
 
 def download(
@@ -154,7 +167,7 @@ def download(
     return DownloadResult(destination, digest.hexdigest(), size, last_modified, etag)
 
 
-# --- Lecture de l'archive -------------------------------------------------------------------------
+# Lecture de l'archive
 
 
 def gtfs_members(archive: zipfile.ZipFile) -> dict[str, str]:
@@ -216,14 +229,26 @@ def parse_date(value: str) -> dt.date | None:
 
 
 def mode_name(route_type: str) -> str:
+    """Famille de mode d'un route_type GTFS, de base ou étendu (ex. '713' -> 'bus')."""
     try:
         code = int(route_type)
     except ValueError:
         return f"inconnu ({route_type})"
-    return ROUTE_TYPES.get(code, f"autre ({code})")
+    if code in ROUTE_TYPES:
+        return ROUTE_TYPES[code]
+    for low, high, family in EXTENDED_FAMILIES:
+        if low <= code <= high:
+            return family
+    return f"autre ({code})"
 
 
-# --- Résumé et contrôles qualité ------------------------------------------------------------------
+def _numeric_first(item: tuple[str, int]) -> tuple[bool, int, str]:
+    """Clé de tri : codes numériques dans l'ordre croissant, puis les valeurs non numériques."""
+    code = item[0]
+    return (not code.isdigit(), int(code) if code.isdigit() else 0, code)
+
+
+# Résumé et contrôles qualité
 
 
 def validity_window(archive: zipfile.ZipFile, members: dict[str, str]) -> dict[str, str | None]:
@@ -264,8 +289,10 @@ def summarize(archive: zipfile.ZipFile, members: dict[str, str], today: dt.date)
             warnings.append(f"GTFS bientôt périmé : validité jusqu'au {end}")
 
     lat_min, lat_max, lon_min, lon_max = GTFS_BBOX
+    m_lat_min, m_lat_max, m_lon_min, m_lon_max = LYON_BBOX
     stops_by_type: Counter[str] = Counter()
     missing_coords, outside = [], []
+    stops_in_metropole = 0
     for row in read_rows(archive, members["stops.txt"]):
         location_type = row.get("location_type") or "0"
         stops_by_type[location_type] += 1
@@ -278,17 +305,23 @@ def summarize(archive: zipfile.ZipFile, members: dict[str, str], today: dt.date)
             continue
         if lat == 0 and lon == 0:
             missing_coords.append(row.get("stop_id", "?"))
-        elif not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
+            continue
+        if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
             outside.append(f"{row.get('stop_id', '?')} {row.get('stop_name', '')}".strip())
+        if location_type == "0" and m_lat_min <= lat <= m_lat_max and m_lon_min <= lon <= m_lon_max:
+            stops_in_metropole += 1
     if missing_coords:
         sample = ", ".join(missing_coords[:10])
         warnings.append(f"{len(missing_coords)} arrêts sans coordonnées valides : {sample}")
     if outside:
         warnings.append(f"{len(outside)} arrêts hors de l'emprise attendue : {', '.join(outside[:10])}")
 
-    routes_by_mode: Counter[str] = Counter(
-        mode_name(row.get("route_type", "")) for row in read_rows(archive, members["routes.txt"])
+    routes_by_type: Counter[str] = Counter(
+        row.get("route_type", "") for row in read_rows(archive, members["routes.txt"])
     )
+    routes_by_mode: Counter[str] = Counter()
+    for route_type, count in routes_by_type.items():
+        routes_by_mode[mode_name(route_type)] += count
     absent = [mode for mode in EXPECTED_MODES if mode not in routes_by_mode]
     if absent:
         warnings.append(f"Modes attendus absents : {', '.join(absent)}")
@@ -304,8 +337,10 @@ def summarize(archive: zipfile.ZipFile, members: dict[str, str], today: dt.date)
             "agencies": sum(1 for _ in read_rows(archive, members["agency.txt"])),
             "stops": stops_by_type.get("0", 0),
             "stations": stops_by_type.get("1", 0),
+            "stops_in_metropole": stops_in_metropole,
             "routes": sum(routes_by_mode.values()),
             "routes_by_mode": dict(sorted(routes_by_mode.items())),
+            "routes_by_route_type": dict(sorted(routes_by_type.items(), key=_numeric_first)),
             "trips": trips,
             "stop_times": stop_times,
         },
@@ -325,7 +360,7 @@ def extract(archive: zipfile.ZipFile, members: dict[str, str], target: Path) -> 
     return target
 
 
-# --- Orchestration --------------------------------------------------------------------------------
+# Orchestration
 
 
 def snapshot_dir(root: Path, now: dt.datetime) -> Path:

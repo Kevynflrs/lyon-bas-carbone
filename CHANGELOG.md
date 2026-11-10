@@ -3,6 +3,24 @@
 Les changements notables de ce projet sont consignés ici. Le format suit
 [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet utilise le [versionnement sémantique](https://semver.org/lang/fr/).
 
+## [0.2.1][0.2.1] - 2026-11-10
+
+### Corrigé
+
+- **Types de lignes étendus** (702 express, 705 nuit, 711 navette, 713 scolaire, 714 substitution)
+  classés par famille au lieu de « autre » ; le détail par code reste dans le manifeste.
+- **Emprise de contrôle** élargie à tout le réseau SYTRAL : les 581 arrêts scolaires de la Loire
+  n'étaient pas des anomalies.
+- **Jour de référence de l'exploration** : le mardi ou jeudi où le plus de lignes de métro,
+  tramway et funiculaire circulent. Le premier mardi tombait pendant la fermeture du métro C.
+
+### Ajouté
+
+- Lignes de métro, tramway et funiculaire à l'arrêt le jour même, dans l'exploration.
+- Nombre d'arrêts situés dans la métropole dans le manifeste (`stops_in_metropole`).
+- Note d'exploration du GTFS TCL : `docs/exploration-gtfs.md`.
+- Test d'intégration : les quatre lignes de métro circulent le jour de référence.
+
 ## [0.2.0][0.2.0] - 2026-11-10
 
 ### Ajouté
@@ -45,6 +63,7 @@ Première version publique.
 - CI/CD : tests unitaires, tests d'intégration sur staging, smoke test et déploiement sur `main`.
 - Licence MIT, conventions de branches et de commits.
 
+[0.2.1]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Kevynflrs/lyon-bas-carbone/releases/tag/v0.1.0

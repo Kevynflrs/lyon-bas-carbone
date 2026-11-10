@@ -193,6 +193,8 @@ def test_summary_counts(sample_zip):
     counts = summary_of(sample_zip)["counts"]
     assert counts["stops"] == 5  # BOM ignoré : la colonne stop_id est bien reconnue
     assert counts["stations"] == 1
+    assert counts["stops_in_metropole"] == 4  # l'arrêt en (0, 0) n'est pas compté
+    assert counts["routes_by_route_type"] == {"0": 1, "1": 1, "3": 1, "7": 1}
     assert counts["routes_by_mode"] == {"bus": 1, "funiculaire": 1, "metro": 1, "tramway": 1}
     assert counts["trips"] == 18
     assert counts["stop_times"] == 36
@@ -234,9 +236,35 @@ def test_warnings_missing_mode_and_outside_stop(tmp_path):
     assert any("hors de l'emprise" in w and "8888" in w for w in warnings)
 
 
+def test_school_stops_in_the_loire_are_inside_the_sytral_area(tmp_path):
+    # Cas réel : 581 arrêts de lignes scolaires à Charlieu et au Coteau (Loire) dans le GTFS TCL.
+    files = sample_files()
+    files["stops.txt"] += (
+        "21000,Charlieu Ecole Ste Marie,46.1610,4.1730,0,\n21007,Le Côteau Pincourt,46.0190,4.0890,0,\n"
+    )
+    summary = summary_of(write_zip(tmp_path / "g.zip", files))
+    assert not any("hors de l'emprise" in w for w in summary["warnings"])
+    assert summary["counts"]["stops_in_metropole"] == 4  # mais hors de la métropole
+
+
+def test_extended_route_types_are_grouped_by_family(tmp_path):
+    files = sample_files()
+    files["routes.txt"] += (
+        "PL1,PL1,Pleine Lune 1,705\nJD300,JD300,Ligne scolaire 300,713\nBRT4,BRT4,Substitution T4,714\n"
+    )
+    counts = summary_of(write_zip(tmp_path / "g.zip", files))["counts"]
+    assert counts["routes_by_mode"]["bus"] == 4  # C3 + trois lignes 7xx
+    assert counts["routes_by_route_type"] == {"0": 1, "1": 1, "3": 1, "7": 1, "705": 1, "713": 1, "714": 1}
+
+
 def test_mode_names():
     assert gtfs.mode_name("1") == "metro"
     assert gtfs.mode_name("700") == "bus"
+    assert gtfs.mode_name("705") == "bus"  # bus de nuit
+    assert gtfs.mode_name("713") == "bus"  # bus scolaire
+    assert gtfs.mode_name("401") == "metro"
+    assert gtfs.mode_name("900") == "tramway"
+    assert gtfs.mode_name("1400") == "funiculaire"
     assert gtfs.mode_name("42") == "autre (42)"
     assert gtfs.mode_name("") == "inconnu ()"
 
