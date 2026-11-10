@@ -23,6 +23,8 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN_STAGING }}
       HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO_STAGING }}
       ALLOW_HUB_WRITE_TESTS: "1"
+      GRANDLYON_USERNAME: ${{ secrets.GRANDLYON_USERNAME }}
+      GRANDLYON_PASSWORD: ${{ secrets.GRANDLYON_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
 
