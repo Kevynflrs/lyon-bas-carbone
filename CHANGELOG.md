@@ -3,7 +3,7 @@
 Les changements notables de ce projet sont consignés ici. Le format suit
 [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet utilise le [versionnement sémantique](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [0.3.0][0.3.0] - 2026-11-10
 
 ### Ajouté
 
@@ -13,6 +13,9 @@ Les changements notables de ce projet sont consignés ici. Le format suit
 - **Méthodologie CO2** : `docs/methodologie-co2.md` (calcul, hypothèses, correspondance GTFS → facteur,
   limites).
 - Test d'intégration comparant la vraie API au CSV versionné.
+- **Site : « Ce que pèse un kilomètre »** : émissions par personne et par km de neuf modes (usage et
+  fabrication), phrase de comparaison, hypothèses et limites. Les facteurs sont lus dans
+  `reference/emission_factors.csv` au moment du build, qui échoue si le fichier est incohérent.
 
 ## [0.2.1][0.2.1] - 2026-11-10
 
@@ -74,6 +77,7 @@ Première version publique.
 - CI/CD : tests unitaires, tests d'intégration sur staging, smoke test et déploiement sur `main`.
 - Licence MIT, conventions de branches et de commits.
 
+[0.3.0]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Kevynflrs/lyon-bas-carbone/compare/v0.1.0...v0.1.1
