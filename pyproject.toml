@@ -1,6 +1,6 @@
 [project]
 name = "lyon-bas-carbone"
-version = "0.2.0"
+version = "0.2.1"
 description = "Comparateur CO2 des trajets à Lyon (TCL, Vélo'v, marche, voiture) : pipeline de données + ML."
 requires-python = ">=3.11"
 license = { text = "MIT" }

@@ -107,6 +107,11 @@ Le test d'intégration tolère quelques stations de ce type mais échoue si plus
 sortent de la métropole, ce qui révélerait un flux cassé (latitude et longitude inversées, mauvaise
 ville). Autres contrôles : unicité des stations, compteurs positifs, fraîcheur du flux (moins d'une heure).
 
+Côté GTFS TCL, l'exploration a montré que le fichier couvre tout le réseau SYTRAL (804 lignes,
+dont 593 lignes scolaires) et que le métro C était fermé jusqu'au 15/11/2026 : le jour de
+calcul est donc choisi pour que toutes les lignes structurantes circulent. Détails dans
+[docs/exploration-gtfs.md](docs/exploration-gtfs.md).
+
 ## Démarrer en local
 
 Prérequis : Python 3.12 (64 bits), Node.js 20.19+ ou 22.12+.
@@ -206,7 +211,6 @@ Le détail des versions est dans le [journal des modifications](CHANGELOG.md).
 
 Le code est distribué sous licence [MIT](LICENSE). Les données restent soumises à leurs licences
 respectives, indiquées dans le tableau ci-dessus.
-
 
 Le GTFS TCL n'est pas republié : chaque exécution le télécharge avec un compte data.grandlyon.com et
    le garde en local. Seuls des résultats calculés (temps de trajet, CO2) seront publiés, avec la mention
