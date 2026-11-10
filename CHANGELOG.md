@@ -3,6 +3,17 @@
 Les changements notables de ce projet sont consignés ici. Le format suit
 [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet utilise le [versionnement sémantique](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Ajouté
+
+- **Facteurs d'émission** (API Impact CO2 de l'ADEME) : script de récupération, CSV versionné
+  `reference/emission_factors.csv` (détail usage / construction), contrôles de cohérence et mode
+  `--check` qui détecte une modification des facteurs par l'ADEME.
+- **Méthodologie CO2** : `docs/methodologie-co2.md` (calcul, hypothèses, correspondance GTFS → facteur,
+  limites).
+- Test d'intégration comparant la vraie API au CSV versionné.
+
 ## [0.2.1][0.2.1] - 2026-11-10
 
 ### Corrigé
